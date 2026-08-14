@@ -10,6 +10,7 @@ mkdirSync(dataDirectory, { recursive: true });
 
 const sqlite = new Database(path.join(dataDirectory, 'characteros.db'));
 sqlite.pragma('journal_mode = WAL');
+sqlite.pragma('foreign_keys = ON');
 sqlite.exec(`
   CREATE TABLE IF NOT EXISTS characters (
     id TEXT PRIMARY KEY,
@@ -24,6 +25,58 @@ sqlite.exec(`
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS conversations (
+    id TEXT PRIMARY KEY,
+    character_id TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '新对话',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE
+  );
+  CREATE TABLE IF NOT EXISTS messages (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    role TEXT NOT NULL CHECK(role IN ('assistant', 'user')),
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+  );
+  CREATE TABLE IF NOT EXISTS knowledge_documents (
+    id TEXT PRIMARY KEY,
+    character_id TEXT NOT NULL,
+    title TEXT NOT NULL,
+    content TEXT NOT NULL,
+    source TEXT NOT NULL DEFAULT 'manual',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE
+  );
+  CREATE TABLE IF NOT EXISTS knowledge_chunks (
+    id TEXT PRIMARY KEY,
+    document_id TEXT NOT NULL,
+    character_id TEXT NOT NULL,
+    position INTEGER NOT NULL,
+    content TEXT NOT NULL,
+    search_text TEXT NOT NULL,
+    FOREIGN KEY(document_id) REFERENCES knowledge_documents(id) ON DELETE CASCADE
+  );
+  CREATE TABLE IF NOT EXISTS memories (
+    id TEXT PRIMARY KEY,
+    character_id TEXT NOT NULL,
+    conversation_id TEXT NOT NULL,
+    kind TEXT NOT NULL CHECK(kind IN ('fact', 'preference', 'relationship', 'event')),
+    content TEXT NOT NULL,
+    confidence INTEGER NOT NULL DEFAULT 50,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    last_accessed_at TEXT NOT NULL,
+    FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE,
+    FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+  );
+  CREATE INDEX IF NOT EXISTS conversations_character_idx ON conversations(character_id, updated_at DESC);
+  CREATE INDEX IF NOT EXISTS messages_conversation_idx ON messages(conversation_id, created_at);
+  CREATE INDEX IF NOT EXISTS knowledge_chunks_character_idx ON knowledge_chunks(character_id);
+  CREATE INDEX IF NOT EXISTS memories_character_idx ON memories(character_id, updated_at DESC);
 `);
 
 const characterColumns = sqlite.pragma('table_info(characters)') as Array<{ name: string }>;

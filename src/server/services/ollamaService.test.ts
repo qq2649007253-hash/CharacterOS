@@ -11,7 +11,7 @@ const character: Character = {
   description: '',
   greeting: '你好',
   id: 'character-1',
-  lore: '只属于测试角色的背景',
+  lore: '角色完整背景现在存入知识库',
   model: 'qwen2.5:7b',
   name: '测试角色',
   systemPrompt: '这是受保护的系统人设',
@@ -19,14 +19,16 @@ const character: Character = {
 };
 
 describe('buildOllamaMessages', () => {
-  it('always places the persisted persona before conversation history', () => {
+  it('places persona, retrieved knowledge and memory before persisted history', () => {
     const messages = buildOllamaMessages(character, {
-      characterId: character.id,
-      messages: [{ content: '你好', role: 'user' }],
+      history: [{ content: '你好', role: 'user' }],
+      knowledge: [{ content: '检索到的背景', documentId: 'doc-1', score: 4, title: '角色资料' }],
+      memories: [{ content: '用户喜欢咖啡', kind: 'preference' }],
     });
     expect(messages[0].role).toBe('system');
     expect(messages[0].content).toContain(character.systemPrompt);
-    expect(messages[0].content).toContain(character.lore);
+    expect(messages[0].content).toContain('检索到的背景');
+    expect(messages[0].content).toContain('用户喜欢咖啡');
     expect(messages[0].content).toContain('不得混入其他角色');
     expect(messages[1]).toEqual({ content: '你好', role: 'user' });
   });
