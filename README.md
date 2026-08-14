@@ -1,51 +1,46 @@
 # CharacterOS
 
-CharacterOS 是一个从零实现的、本地优先角色智能体平台。它不依赖 Lobe Vidol，目标是完整展示角色配置、模型调用、持久化、知识检索和长期记忆的工程实现。
+CharacterOS 是一个从零实现、本地优先的角色智能体平台，不依赖 Lobe Vidol。它包含角色配置、知识检索、会话持久化、长期记忆和 Ollama 流式对话。
 
 ## 当前能力
 
-- SQLite 角色数据持久化
-- 独立角色背景资料与身份一致性约束
-- 角色创建、读取、更新和删除 API
-- Ollama 本地模型发现与健康检查
-- 基于 Ollama 的流式角色对话
-- 独立角色管理与聊天界面
+- SQLite 角色、会话、消息、知识与记忆持久化
+- 角色知识文档自动分块与中文相关性检索
+- 每轮回复后提取有长期价值的用户事实与偏好
+- 跨会话召回同一角色形成的长期记忆
+- 角色身份隔离与设定一致性约束
+- 角色和知识库管理 API
+- Ollama 本地模型发现、健康检查与流式对话
+- 可恢复历史会话的聊天界面
 
 ## 本地运行
 
 ```bash
 pnpm install
-pnpm dev
-```
-
-默认访问 `http://localhost:3000`。如果 3000 端口已被占用，可以运行：
-
-```bash
+pnpm seed
 pnpm exec next dev --turbo -p 3100
 ```
 
-然后访问 `http://localhost:3100`。Ollama 默认连接 `http://127.0.0.1:11434`。
+访问 `http://localhost:3100`。Ollama 默认连接 `http://127.0.0.1:11434`。
 
-需要加载演示角色时，在服务运行期间执行：
-
-```bash
-pnpm seed
-```
-
-种子脚本可以重复执行，已存在的同名角色会被跳过。
+进入角色聊天页后，左侧可以新建或切换历史会话，查看每轮知识与记忆命中数。展开“管理知识库”可以粘贴角色设定、世界观或剧情资料。所有本地数据都保存在 `data/characteros.db`。
 
 ## HTTP API
 
 - `GET/POST /api/characters`：角色列表与创建
 - `GET/PATCH/DELETE /api/characters/:id`：角色详情管理
+- `GET/POST /api/characters/:id/knowledge`：知识文档列表与添加
+- `GET /api/characters/:id/memories`：长期记忆列表
+- `GET/POST /api/conversations`：会话列表与创建
+- `GET /api/conversations/:id`：恢复会话及消息
 - `GET /api/ollama/models`：本地模型发现与延迟检测
-- `POST /api/chat`：注入角色人设并返回纯文本流
+- `POST /api/chat`：检索知识与记忆并返回流式回复
 
-## 架构原则
+## 架构
 
-- `src/domain`：业务模型和输入校验，不依赖 UI
-- `src/server`：数据库、仓储和外部模型服务
-- `src/app/api`：HTTP 边界，只负责解析、验证和映射错误
-- `src/app`：产品界面
-
-后续路线：知识文档切片与检索、长期记忆、会话数据库、评测和 Docker 部署。
+- `src/domain`：业务模型和输入校验
+- `src/server/database`：SQLite 表结构与自动迁移
+- `src/server/repositories`：角色、会话、知识和记忆仓储
+- `src/server/services`：检索、长期记忆提取和 Ollama 接入
+- `src/app/api`：HTTP API
+- `src/components`：角色管理和聊天界面
