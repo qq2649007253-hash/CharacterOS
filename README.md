@@ -25,6 +25,14 @@ pnpm exec next dev --turbo -p 3100
 
 然后访问 `http://localhost:3100`。Ollama 默认连接 `http://127.0.0.1:11434`。
 
+需要加载演示角色时，在服务运行期间执行：
+
+```bash
+pnpm seed
+```
+
+种子脚本可以重复执行，已存在的同名角色会被跳过。
+
 ## HTTP API
 
 - `GET/POST /api/characters`：角色列表与创建
