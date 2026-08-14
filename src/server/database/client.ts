@@ -18,11 +18,17 @@ sqlite.exec(`
     avatar_url TEXT NOT NULL DEFAULT '',
     cover_url TEXT NOT NULL DEFAULT '',
     greeting TEXT NOT NULL,
+    lore TEXT NOT NULL DEFAULT '',
     system_prompt TEXT NOT NULL,
     model TEXT NOT NULL,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   );
 `);
+
+const characterColumns = sqlite.pragma('table_info(characters)') as Array<{ name: string }>;
+if (!characterColumns.some((column) => column.name === 'lore')) {
+  sqlite.exec("ALTER TABLE characters ADD COLUMN lore TEXT NOT NULL DEFAULT ''");
+}
 
 export const database = drizzle(sqlite, { schema });

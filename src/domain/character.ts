@@ -5,6 +5,7 @@ const characterFields = {
   coverUrl: z.string().max(2048),
   description: z.string().trim().max(240),
   greeting: z.string().trim().min(1).max(500),
+  lore: z.string().trim().max(20_000),
   model: z.string().trim().min(1).max(120),
   name: z.string().trim().min(1).max(64),
   systemPrompt: z.string().trim().min(1).max(20_000),
@@ -15,6 +16,7 @@ export const characterInputSchema = z.object({
   avatarUrl: characterFields.avatarUrl.default(''),
   coverUrl: characterFields.coverUrl.default(''),
   description: characterFields.description.default(''),
+  lore: characterFields.lore.default(''),
 });
 
 export const characterPatchSchema = z.object(characterFields).partial().refine(

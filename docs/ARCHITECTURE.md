@@ -13,7 +13,7 @@ Browser UI -> Next.js Route Handlers -> Domain Services -> SQLite / Ollama
 1. UI 向 `/api/characters` 提交角色配置。
 2. API 使用 Zod 完成边界校验。
 3. Repository 将角色保存到 SQLite。
-4. 聊天 API 加载角色人设，将其组成 system message 后转发给 Ollama。
+4. 聊天 API 将行为准则、角色背景资料和身份一致性约束组成 system message 后转发给 Ollama。
 5. Ollama 的 NDJSON 流被转换为浏览器可直接消费的纯文本流。
 
 ## 安全约束

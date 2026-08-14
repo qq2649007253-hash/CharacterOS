@@ -11,6 +11,7 @@ const character: Character = {
   description: '',
   greeting: '你好',
   id: 'character-1',
+  lore: '只属于测试角色的背景',
   model: 'qwen2.5:7b',
   name: '测试角色',
   systemPrompt: '这是受保护的系统人设',
@@ -23,9 +24,10 @@ describe('buildOllamaMessages', () => {
       characterId: character.id,
       messages: [{ content: '你好', role: 'user' }],
     });
-    expect(messages).toEqual([
-      { content: character.systemPrompt, role: 'system' },
-      { content: '你好', role: 'user' },
-    ]);
+    expect(messages[0].role).toBe('system');
+    expect(messages[0].content).toContain(character.systemPrompt);
+    expect(messages[0].content).toContain(character.lore);
+    expect(messages[0].content).toContain('不得混入其他角色');
+    expect(messages[1]).toEqual({ content: '你好', role: 'user' });
   });
 });

@@ -7,6 +7,7 @@ const validCharacter = {
   coverUrl: '',
   description: '测试角色',
   greeting: '你好',
+  lore: '角色背景资料',
   model: 'qwen2.5:7b',
   name: '爱莉希雅',
   systemPrompt: '保持温柔而真诚的表达。',

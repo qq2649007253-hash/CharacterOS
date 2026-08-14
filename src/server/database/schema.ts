@@ -7,6 +7,7 @@ export const characters = sqliteTable('characters', {
   description: text('description').notNull().default(''),
   greeting: text('greeting').notNull(),
   id: text('id').primaryKey(),
+  lore: text('lore').notNull().default(''),
   model: text('model').notNull(),
   name: text('name').notNull(),
   systemPrompt: text('system_prompt').notNull(),

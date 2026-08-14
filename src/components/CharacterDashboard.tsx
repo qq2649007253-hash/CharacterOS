@@ -18,6 +18,7 @@ const initialForm: CharacterInput = {
   coverUrl: '',
   description: '',
   greeting: '你好，很高兴认识你。',
+  lore: '',
   model: 'qwen2.5:7b',
   name: '',
   systemPrompt: '你是一个真诚、可靠的角色助手。请保持人设一致，不确定的事实要坦诚说明。',

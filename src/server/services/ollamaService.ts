@@ -11,7 +11,19 @@ interface OllamaModel {
 }
 
 export const buildOllamaMessages = (character: Character, request: ChatRequest) => [
-  { content: character.systemPrompt, role: 'system' as const },
+  {
+    content: [
+      '[角色行为准则]',
+      character.systemPrompt,
+      character.lore && '[角色背景资料]',
+      character.lore,
+      '[一致性要求]',
+      '只以当前角色身份表达，不得混入其他角色的身份、经历、阵营或人际关系。背景资料没有说明的剧情细节，必须回答“不确定”或说明资料不足，不得自行续写成官方事实。用户要求创作同人剧情时，要明确标注为非官方创作。',
+    ]
+      .filter(Boolean)
+      .join('\n\n'),
+    role: 'system' as const,
+  },
   ...request.messages.map(({ content, role }) => ({ content, role })),
 ];
 
