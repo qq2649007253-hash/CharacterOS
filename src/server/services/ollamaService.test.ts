@@ -22,7 +22,7 @@ describe('buildOllamaMessages', () => {
   it('places persona, retrieved knowledge and memory before persisted history', () => {
     const messages = buildOllamaMessages(character, {
       history: [{ content: '你好', role: 'user' }],
-      knowledge: [{ content: '检索到的背景', documentId: 'doc-1', score: 4, title: '角色资料' }],
+      knowledge: [{ content: '检索到的背景', documentId: 'doc-1', method: 'keyword', score: 4, title: '角色资料' }],
       memories: [{ content: '用户喜欢咖啡', kind: 'preference' }],
       toolResults: [{ name: 'get_current_time', result: { value: '2026年8月20日' } }],
     });

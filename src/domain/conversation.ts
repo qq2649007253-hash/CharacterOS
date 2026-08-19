@@ -13,9 +13,16 @@ export interface Conversation {
 }
 
 export interface PersistedMessage {
+  citationsJson: string;
   content: string;
   conversationId: string;
   createdAt: string;
   id: string;
   role: 'assistant' | 'user';
+}
+
+export interface MessageCitation {
+  documentId: string;
+  score: number;
+  title: string;
 }

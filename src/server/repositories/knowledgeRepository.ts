@@ -33,6 +33,7 @@ const chunkValues = (documentId: string, characterId: string, content: string) =
     characterId,
     content: chunk,
     documentId,
+    embeddingJson: '',
     id: randomUUID(),
     position,
     searchText: normalize(chunk),
@@ -102,5 +103,9 @@ export const knowledgeRepository = {
       .from(knowledgeChunks)
       .where(eq(knowledgeChunks.characterId, characterId))
       .all();
+  },
+
+  updateEmbedding(id: string, embedding: number[]) {
+    database.update(knowledgeChunks).set({ embeddingJson: JSON.stringify(embedding) }).where(eq(knowledgeChunks.id, id)).run();
   },
 };

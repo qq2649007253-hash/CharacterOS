@@ -22,6 +22,8 @@ CharacterOS 是一个从零实现、本地优先的角色智能体平台，不�
 
 - SQLite 角色、会话、消息、知识与记忆持久化
 - 角色知识文档自动分块与中文相关性检索
+- Ollama Embedding 向量化、关键词＋语义混合检索与自动降级
+- 回答引用来源和检索评分随消息持久化
 - 每轮回复后提取有长期价值的用户事实与偏好
 - 跨会话召回同一角色形成的长期记忆
 - 结构化 Agent 工具调用、风险分级与人工审批
@@ -41,6 +43,14 @@ pnpm exec next dev --turbo -p 3100
 
 访问 `http://localhost:3100`。Ollama 默认连接 `http://127.0.0.1:11434`。
 
+启用向量检索需要安装 Embedding 模型：
+
+```bash
+ollama pull embeddinggemma
+```
+
+可通过 `OLLAMA_EMBED_MODEL` 环境变量更换模型。Embedding 模型不可用时，CharacterOS 会自动退回关键词检索。
+
 进入角色聊天页后，左侧可以新建或切换历史会话，查看每轮知识与记忆命中数。展开“管理知识库”可以粘贴角色设定、世界观或剧情资料。所有本地数据都保存在 `data/characteros.db`。
 
 ## HTTP API
@@ -48,6 +58,7 @@ pnpm exec next dev --turbo -p 3100
 - `GET/POST /api/characters`：角色列表与创建
 - `GET/PATCH/DELETE /api/characters/:id`：角色详情管理
 - `GET/POST /api/characters/:id/knowledge`：知识文档列表与添加
+- `POST /api/characters/:id/knowledge/index`：重建角色知识向量索引
 - `GET /api/characters/:id/memories`：长期记忆列表
 - `GET/POST /api/conversations`：会话列表与创建
 - `GET /api/conversations/:id`：恢复会话及消息

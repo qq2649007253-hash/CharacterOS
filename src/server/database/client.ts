@@ -38,6 +38,7 @@ sqlite.exec(`
     conversation_id TEXT NOT NULL,
     role TEXT NOT NULL CHECK(role IN ('assistant', 'user')),
     content TEXT NOT NULL,
+    citations_json TEXT NOT NULL DEFAULT '',
     created_at TEXT NOT NULL,
     FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
   );
@@ -58,6 +59,7 @@ sqlite.exec(`
     position INTEGER NOT NULL,
     content TEXT NOT NULL,
     search_text TEXT NOT NULL,
+    embedding_json TEXT NOT NULL DEFAULT '',
     FOREIGN KEY(document_id) REFERENCES knowledge_documents(id) ON DELETE CASCADE
   );
   CREATE TABLE IF NOT EXISTS memories (
@@ -107,6 +109,16 @@ sqlite.exec(`
 const characterColumns = sqlite.pragma('table_info(characters)') as Array<{ name: string }>;
 if (!characterColumns.some((column) => column.name === 'lore')) {
   sqlite.exec("ALTER TABLE characters ADD COLUMN lore TEXT NOT NULL DEFAULT ''");
+}
+
+const messageColumns = sqlite.pragma('table_info(messages)') as Array<{ name: string }>;
+if (!messageColumns.some((column) => column.name === 'citations_json')) {
+  sqlite.exec("ALTER TABLE messages ADD COLUMN citations_json TEXT NOT NULL DEFAULT ''");
+}
+
+const knowledgeChunkColumns = sqlite.pragma('table_info(knowledge_chunks)') as Array<{ name: string }>;
+if (!knowledgeChunkColumns.some((column) => column.name === 'embedding_json')) {
+  sqlite.exec("ALTER TABLE knowledge_chunks ADD COLUMN embedding_json TEXT NOT NULL DEFAULT ''");
 }
 
 export const database = drizzle(sqlite, { schema });

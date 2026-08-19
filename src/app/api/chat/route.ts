@@ -31,8 +31,10 @@ export const POST = async (request: Request) => {
   }
   conversationRepository.addMessage(conversation.id, 'user', content);
   const history = [...existingMessages, { content, role: 'user' as const }];
-  const knowledge = retrievalService.knowledge(character.id, content);
+  const knowledge = await retrievalService.knowledge(character.id, content, 5, request.signal);
   const relevantMemories = retrievalService.memories(character.id, content);
+  const citationsJson = JSON.stringify(knowledge.map(({ documentId, score, title }) => ({ documentId, score, title })));
+  const citationsHeader = Buffer.from(citationsJson, 'utf8').toString('base64url');
   const toolResults: Array<{ name: string; result: unknown }> = [];
 
   const decision = await toolPlannerService.decide(character, content, request.signal);
@@ -55,6 +57,7 @@ export const POST = async (request: Request) => {
           {
             headers: {
               'X-Knowledge-Hits': String(knowledge.length),
+              'X-Knowledge-Sources': citationsHeader,
               'X-Memory-Hits': String(relevantMemories.length),
             },
             status: 202,
@@ -99,7 +102,7 @@ export const POST = async (request: Request) => {
             } catch {}
           }
           if (assistantContent.trim()) {
-            conversationRepository.addMessage(conversation.id, 'assistant', assistantContent);
+            conversationRepository.addMessage(conversation.id, 'assistant', assistantContent, citationsJson);
             await memoryService.extract(character, conversation.id, content, assistantContent);
           }
         },
@@ -122,6 +125,7 @@ export const POST = async (request: Request) => {
         'Cache-Control': 'no-cache',
         'Content-Type': 'text/plain; charset=utf-8',
         'X-Knowledge-Hits': String(knowledge.length),
+        'X-Knowledge-Sources': citationsHeader,
         'X-Memory-Hits': String(relevantMemories.length),
       },
     });

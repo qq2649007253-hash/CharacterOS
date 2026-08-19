@@ -23,6 +23,7 @@ export const conversations = sqliteTable('conversations', {
 });
 
 export const messages = sqliteTable('messages', {
+  citationsJson: text('citations_json').notNull().default(''),
   content: text('content').notNull(),
   conversationId: text('conversation_id').notNull(),
   createdAt: text('created_at').notNull(),
@@ -44,6 +45,7 @@ export const knowledgeChunks = sqliteTable('knowledge_chunks', {
   characterId: text('character_id').notNull(),
   content: text('content').notNull(),
   documentId: text('document_id').notNull(),
+  embeddingJson: text('embedding_json').notNull().default(''),
   id: text('id').primaryKey(),
   position: integer('position').notNull(),
   searchText: text('search_text').notNull(),

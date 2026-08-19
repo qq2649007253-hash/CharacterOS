@@ -18,6 +18,7 @@ export interface KnowledgeDocument {
 export interface RetrievedKnowledge {
   content: string;
   documentId: string;
+  method: 'hybrid' | 'keyword';
   score: number;
   title: string;
 }

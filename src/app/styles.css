@@ -102,11 +102,14 @@ textarea.input { min-height: 120px; resize: vertical; line-height: 1.55; }
 .mini-form { display: grid; gap: 8px; margin-top: 8px; }
 .mini-form .input { padding: 9px 10px; font-size: 12px; }
 .mini-form textarea.input { min-height: 82px; }
+.index-status { margin: 8px 0; color: var(--muted); font-size: 11px; }
 .chat-panel { display: flex; flex-direction: column; min-width: 0; }
 .messages { flex: 1; overflow: auto; display: flex; flex-direction: column; gap: 14px; padding: 28px; }
 .message { max-width: min(760px, 88%); padding: 13px 16px; border: 1px solid var(--border); border-radius: 16px; line-height: 1.65; white-space: pre-wrap; }
 .message.user { align-self: flex-end; background: rgba(137,110,224,.25); }
 .message.assistant { align-self: flex-start; background: var(--panel); }
+.message-citations { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border); }
+.message-citations span { padding: 3px 7px; border-radius: 999px; color: #aebbe0; background: rgba(155,140,255,.1); font-size: 11px; }
 .tool-call-card {
   align-self: flex-start; width: min(620px, 92%); padding: 14px; border: 1px solid var(--border);
   border-radius: 14px; background: rgba(18,26,49,.92);

@@ -6,9 +6,9 @@ import { database } from '@/server/database/client';
 import { conversations, messages } from '@/server/database/schema';
 
 export const conversationRepository = {
-  addMessage(conversationId: string, role: PersistedMessage['role'], content: string) {
+  addMessage(conversationId: string, role: PersistedMessage['role'], content: string, citationsJson = '') {
     const createdAt = new Date().toISOString();
-    const message: PersistedMessage = { content, conversationId, createdAt, id: randomUUID(), role };
+    const message: PersistedMessage = { citationsJson, content, conversationId, createdAt, id: randomUUID(), role };
     database.insert(messages).values(message).run();
     database.update(conversations).set({ updatedAt: createdAt }).where(eq(conversations.id, conversationId)).run();
     return message;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { scoreText, terms } from './retrievalService';
+import { cosineSimilarity, scoreText, terms } from './retrievalService';
 
 describe('retrievalService', () => {
   it('creates Chinese n-grams for natural-language retrieval', () => {
@@ -13,5 +13,10 @@ describe('retrievalService', () => {
     expect(scoreText(query, '三月七喜欢用摄影记录旅途')).toBeGreaterThan(
       scoreText(query, '银狼来自朋克洛德'),
     );
+  });
+
+  it('calculates cosine similarity for vector retrieval', () => {
+    expect(cosineSimilarity([1, 0], [1, 0])).toBe(1);
+    expect(cosineSimilarity([1, 0], [0, 1])).toBe(0);
   });
 });

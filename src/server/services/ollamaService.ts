@@ -40,6 +40,19 @@ export const buildOllamaMessages = (character: Character, context: PromptContext
 ];
 
 export const ollamaService = {
+  async embed(inputs: string[], model = process.env.OLLAMA_EMBED_MODEL || 'embeddinggemma', signal?: AbortSignal) {
+    const response = await fetch(`${baseUrl}/api/embed`, {
+      body: JSON.stringify({ input: inputs, model }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      signal,
+    });
+    if (!response.ok) throw new Error(`Ollama embedding failed with HTTP ${response.status}`);
+    const result = (await response.json()) as { embeddings?: number[][]; model?: string };
+    if (!result.embeddings || result.embeddings.length !== inputs.length) throw new Error('Ollama embedding response is incomplete');
+    return { embeddings: result.embeddings, model: result.model || model };
+  },
+
   async complete(model: string, messages: Array<{ content: string; role: string }>, signal?: AbortSignal) {
     const response = await fetch(`${baseUrl}/api/chat`, {
       body: JSON.stringify({ format: 'json', messages, model, stream: false }),

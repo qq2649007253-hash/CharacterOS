@@ -5,11 +5,24 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 
 import type { Character } from '@/domain/character';
-import type { Conversation, PersistedMessage } from '@/domain/conversation';
+import type { Conversation, MessageCitation, PersistedMessage } from '@/domain/conversation';
 import type { KnowledgeDocument } from '@/domain/knowledge';
 import type { ToolCallRecord } from '@/domain/tool';
 
-type Message = Pick<PersistedMessage, 'content' | 'role'>;
+type Message = Pick<PersistedMessage, 'citationsJson' | 'content' | 'role'>;
+
+const parseCitations = (value: string): MessageCitation[] => {
+  try { return value ? JSON.parse(value) as MessageCitation[] : []; } catch { return []; }
+};
+
+const decodeCitationsHeader = (value: string | null) => {
+  if (!value) return '';
+  try {
+    const base64 = value.replace(/-/g, '+').replace(/_/g, '/');
+    const bytes = Uint8Array.from(atob(base64), (character) => character.charCodeAt(0));
+    return new TextDecoder().decode(bytes);
+  } catch { return ''; }
+};
 
 export function ChatRoom({ character }: { character: Character }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
@@ -24,6 +37,8 @@ export function ChatRoom({ character }: { character: Character }) {
   const [memories, setMemories] = useState<Array<{ content: string; id: string; kind: string }>>([]);
   const [knowledgeTitle, setKnowledgeTitle] = useState('');
   const [knowledgeContent, setKnowledgeContent] = useState('');
+  const [knowledgeIndex, setKnowledgeIndex] = useState({ embedded: 0, model: 'embeddinggemma', total: 0 });
+  const [indexingKnowledge, setIndexingKnowledge] = useState(false);
   const [toolCalls, setToolCalls] = useState<ToolCallRecord[]>([]);
   const [processingToolCall, setProcessingToolCall] = useState('');
   const abortRef = useRef<AbortController>(null);
@@ -36,7 +51,7 @@ export function ChatRoom({ character }: { character: Character }) {
     if (!response.ok) throw new Error('恢复会话失败');
     const data = (await response.json()) as { messages: PersistedMessage[]; toolCalls: ToolCallRecord[] };
     setConversationId(id);
-    setMessages(data.messages.map(({ content, role }) => ({ content, role })));
+    setMessages(data.messages.map(({ citationsJson, content, role }) => ({ citationsJson, content, role })));
     setToolCalls(data.toolCalls);
     setRestoring(false);
   };
@@ -59,8 +74,12 @@ export function ChatRoom({ character }: { character: Character }) {
       fetch(`/api/characters/${character.id}/memories`, { cache: 'no-store' }),
     ]);
     if (knowledgeResponse.ok) {
-      const data = (await knowledgeResponse.json()) as { documents: KnowledgeDocument[] };
+      const data = (await knowledgeResponse.json()) as {
+        documents: KnowledgeDocument[];
+        index: { embedded: number; model: string; total: number };
+      };
       setDocuments(data.documents);
+      setKnowledgeIndex(data.index);
     }
     if (memoryResponse.ok) {
       const data = (await memoryResponse.json()) as { memories: Array<{ content: string; id: string; kind: string }> };
@@ -83,6 +102,21 @@ export function ChatRoom({ character }: { character: Character }) {
     setKnowledgeTitle('');
     setKnowledgeContent('');
     await refreshContextData();
+  };
+
+  const rebuildKnowledgeIndex = async () => {
+    setIndexingKnowledge(true);
+    setError('');
+    try {
+      const response = await fetch(`/api/characters/${character.id}/knowledge/index`, { method: 'POST' });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || '向量索引创建失败，请先在 Ollama 安装 embeddinggemma');
+      await refreshContextData();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : '向量索引创建失败');
+    } finally {
+      setIndexingKnowledge(false);
+    }
   };
 
   useEffect(() => {
@@ -132,7 +166,11 @@ export function ChatRoom({ character }: { character: Character }) {
     event.preventDefault();
     const content = input.trim();
     if (!content || loading || !conversationId) return;
-    setMessages((items) => [...items, { content, role: 'user' }, { content: '', role: 'assistant' }]);
+    setMessages((items) => [
+      ...items,
+      { citationsJson: '', content, role: 'user' },
+      { citationsJson: '', content: '', role: 'assistant' },
+    ]);
     setInput('');
     setError('');
     setLoading(true);
@@ -153,6 +191,7 @@ export function ChatRoom({ character }: { character: Character }) {
         knowledge: Number(response.headers.get('X-Knowledge-Hits') || 0),
         memories: Number(response.headers.get('X-Memory-Hits') || 0),
       });
+      const responseCitations = decodeCitationsHeader(response.headers.get('X-Knowledge-Sources'));
       if (response.headers.get('content-type')?.includes('application/json')) {
         const data = (await response.json()) as {
           message: string;
@@ -161,7 +200,7 @@ export function ChatRoom({ character }: { character: Character }) {
         };
         setMessages((items) => {
           const updated = [...items];
-          updated[updated.length - 1] = { content: data.message, role: 'assistant' };
+          updated[updated.length - 1] = { citationsJson: '', content: data.message, role: 'assistant' };
           return updated;
         });
         if (data.toolCall) setToolCalls((items) => [...items, data.toolCall as ToolCallRecord]);
@@ -181,7 +220,11 @@ export function ChatRoom({ character }: { character: Character }) {
         setMessages((items) => {
           const updated = [...items];
           const last = updated.at(-1);
-          if (last?.role === 'assistant') updated[updated.length - 1] = { ...last, content: last.content + text };
+          if (last?.role === 'assistant') updated[updated.length - 1] = {
+            ...last,
+            citationsJson: responseCitations,
+            content: last.content + text,
+          };
           return updated;
         });
       }
@@ -237,6 +280,10 @@ export function ChatRoom({ character }: { character: Character }) {
             <div className="context-items">
               {documents.map((document) => <span key={document.id}>{document.title}</span>)}
             </div>
+            <p className="index-status">向量索引 {knowledgeIndex.embedded}/{knowledgeIndex.total} · {knowledgeIndex.model}</p>
+            <button className="button" disabled={indexingKnowledge} onClick={() => void rebuildKnowledgeIndex()} type="button">
+              {indexingKnowledge ? '正在索引…' : '重建向量索引'}
+            </button>
             <form className="mini-form" onSubmit={addKnowledge}>
               <input className="input" onChange={(event) => setKnowledgeTitle(event.target.value)} placeholder="资料标题" value={knowledgeTitle} />
               <textarea className="input" onChange={(event) => setKnowledgeContent(event.target.value)} placeholder="粘贴角色设定、世界观或剧情资料" value={knowledgeContent} />
@@ -255,7 +302,14 @@ export function ChatRoom({ character }: { character: Character }) {
             {restoring ? <div className="message assistant">正在恢复会话…</div> : null}
             {messages.map((message, index) => (
               <div className={`message ${message.role}`} key={`${message.role}-${index}`}>
-                {message.content || (loading && index === messages.length - 1 ? '思考中…' : '')}
+                <span>{message.content || (loading && index === messages.length - 1 ? '思考中…' : '')}</span>
+                {parseCitations(message.citationsJson).length ? (
+                  <div className="message-citations">
+                    {parseCitations(message.citationsJson).map((citation) => (
+                      <span key={citation.documentId}>来源：{citation.title} · {citation.score.toFixed(2)}</span>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             ))}
             {toolCalls.map((toolCall) => {
