@@ -107,6 +107,19 @@ textarea.input { min-height: 120px; resize: vertical; line-height: 1.55; }
 .message { max-width: min(760px, 88%); padding: 13px 16px; border: 1px solid var(--border); border-radius: 16px; line-height: 1.65; white-space: pre-wrap; }
 .message.user { align-self: flex-end; background: rgba(137,110,224,.25); }
 .message.assistant { align-self: flex-start; background: var(--panel); }
+.tool-call-card {
+  align-self: flex-start; width: min(620px, 92%); padding: 14px; border: 1px solid var(--border);
+  border-radius: 14px; background: rgba(18,26,49,.92);
+}
+.tool-call-card.pending { border-color: rgba(255,190,92,.48); }
+.tool-call-card.completed { border-color: rgba(83,213,160,.35); }
+.tool-call-card.failed, .tool-call-card.rejected { border-color: rgba(255,107,129,.35); }
+.tool-call-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.tool-call-heading span { display: flex; align-items: center; gap: 8px; font-weight: 800; }
+.tool-call-heading strong { color: var(--muted); font-size: 11px; text-transform: uppercase; }
+.tool-call-card code { display: block; overflow: auto; margin-top: 10px; padding: 10px; border-radius: 9px; color: #cbd5f3; background: rgba(0,0,0,.25); white-space: pre-wrap; }
+.tool-call-card p { margin: 10px 0 0; color: var(--muted); font-size: 13px; overflow-wrap: anywhere; }
+.tool-call-actions { display: flex; gap: 8px; margin-top: 12px; }
 .composer { display: flex; gap: 10px; padding: 18px 24px; border-top: 1px solid var(--border); background: rgba(7,10,20,.76); }
 .composer .input { flex: 1; }
 .muted { color: var(--muted); }

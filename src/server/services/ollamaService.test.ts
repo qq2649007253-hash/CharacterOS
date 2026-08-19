@@ -24,11 +24,13 @@ describe('buildOllamaMessages', () => {
       history: [{ content: '你好', role: 'user' }],
       knowledge: [{ content: '检索到的背景', documentId: 'doc-1', score: 4, title: '角色资料' }],
       memories: [{ content: '用户喜欢咖啡', kind: 'preference' }],
+      toolResults: [{ name: 'get_current_time', result: { value: '2026年8月20日' } }],
     });
     expect(messages[0].role).toBe('system');
     expect(messages[0].content).toContain(character.systemPrompt);
     expect(messages[0].content).toContain('检索到的背景');
     expect(messages[0].content).toContain('用户喜欢咖啡');
+    expect(messages[0].content).toContain('get_current_time');
     expect(messages[0].content).toContain('不得混入其他角色');
     expect(messages[1]).toEqual({ content: '你好', role: 'user' });
   });

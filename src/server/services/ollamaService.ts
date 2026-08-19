@@ -15,6 +15,7 @@ interface PromptContext {
   history: Pick<PersistedMessage, 'content' | 'role'>[];
   knowledge: RetrievedKnowledge[];
   memories: Array<{ content: string; kind: string }>;
+  toolResults?: Array<{ name: string; result: unknown }>;
 }
 
 export const buildOllamaMessages = (character: Character, context: PromptContext) => [
@@ -26,8 +27,10 @@ export const buildOllamaMessages = (character: Character, context: PromptContext
       ...context.knowledge.map((item, index) => `${index + 1}.（${item.title}）${item.content}`),
       context.memories.length > 0 && '[与当前用户有关的长期记忆]',
       ...context.memories.map((memory, index) => `${index + 1}. [${memory.kind}] ${memory.content}`),
+      Boolean(context.toolResults?.length) && '[本轮工具执行结果]',
+      ...(context.toolResults || []).map((item) => `${item.name}: ${JSON.stringify(item.result)}`),
       '[一致性要求]',
-      '只以当前角色身份表达，不得混入其他角色的身份、经历、阵营或人际关系。回答角色设定问题时，以检索资料为准；资料没有说明的细节必须坦诚不确定，不得自行续写成官方事实。长期记忆只用于保持与用户交流的一致性，不得把推测写成事实。用户要求创作同人剧情时，要明确标注为非官方创作。',
+      '只以当前角色身份表达，不得混入其他角色的身份、经历、阵营或人际关系。回答角色设定问题时，以检索资料为准；资料没有说明的细节必须坦诚不确定，不得自行续写成官方事实。长期记忆只用于保持与用户交流的一致性，不得把推测写成事实。只有看到工具执行结果时，才能声称操作已经完成。用户要求创作同人剧情时，要明确标注为非官方创作。',
     ]
       .filter(Boolean)
       .join('\n\n'),

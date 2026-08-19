@@ -1,12 +1,13 @@
 'use client';
 
-import { ArrowLeft, BookOpen, Brain, MessageSquarePlus, Plus, Send, Square } from 'lucide-react';
+import { ArrowLeft, BookOpen, Brain, Check, MessageSquarePlus, Plus, Send, Square, Wrench, X } from 'lucide-react';
 import Link from 'next/link';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 
 import type { Character } from '@/domain/character';
 import type { Conversation, PersistedMessage } from '@/domain/conversation';
 import type { KnowledgeDocument } from '@/domain/knowledge';
+import type { ToolCallRecord } from '@/domain/tool';
 
 type Message = Pick<PersistedMessage, 'content' | 'role'>;
 
@@ -23,6 +24,8 @@ export function ChatRoom({ character }: { character: Character }) {
   const [memories, setMemories] = useState<Array<{ content: string; id: string; kind: string }>>([]);
   const [knowledgeTitle, setKnowledgeTitle] = useState('');
   const [knowledgeContent, setKnowledgeContent] = useState('');
+  const [toolCalls, setToolCalls] = useState<ToolCallRecord[]>([]);
+  const [processingToolCall, setProcessingToolCall] = useState('');
   const abortRef = useRef<AbortController>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
@@ -31,9 +34,10 @@ export function ChatRoom({ character }: { character: Character }) {
     setRestoring(true);
     const response = await fetch(`/api/conversations/${id}`, { cache: 'no-store' });
     if (!response.ok) throw new Error('恢复会话失败');
-    const data = (await response.json()) as { messages: PersistedMessage[] };
+    const data = (await response.json()) as { messages: PersistedMessage[]; toolCalls: ToolCallRecord[] };
     setConversationId(id);
     setMessages(data.messages.map(({ content, role }) => ({ content, role })));
+    setToolCalls(data.toolCalls);
     setRestoring(false);
   };
 
@@ -105,6 +109,25 @@ export function ChatRoom({ character }: { character: Character }) {
 
   useEffect(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), [messages]);
 
+  const reviewToolCall = async (id: string, action: 'approve' | 'reject') => {
+    setProcessingToolCall(id);
+    setError('');
+    try {
+      const response = await fetch(`/api/tool-calls/${id}`, {
+        body: JSON.stringify({ action }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'PATCH',
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || '审批操作失败');
+      await loadConversation(conversationId);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : '审批操作失败');
+    } finally {
+      setProcessingToolCall('');
+    }
+  };
+
   const send = async (event: FormEvent) => {
     event.preventDefault();
     const content = input.trim();
@@ -130,6 +153,25 @@ export function ChatRoom({ character }: { character: Character }) {
         knowledge: Number(response.headers.get('X-Knowledge-Hits') || 0),
         memories: Number(response.headers.get('X-Memory-Hits') || 0),
       });
+      if (response.headers.get('content-type')?.includes('application/json')) {
+        const data = (await response.json()) as {
+          message: string;
+          toolCall?: ToolCallRecord;
+          type?: string;
+        };
+        setMessages((items) => {
+          const updated = [...items];
+          updated[updated.length - 1] = { content: data.message, role: 'assistant' };
+          return updated;
+        });
+        if (data.toolCall) setToolCalls((items) => [...items, data.toolCall as ToolCallRecord]);
+        setConversations((items) => items.map((item) => (
+          item.id === conversationId && item.title === '新对话'
+            ? { ...item, title: content.replace(/\s+/g, ' ').slice(0, 24) }
+            : item
+        )));
+        return;
+      }
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       while (true) {
@@ -216,6 +258,37 @@ export function ChatRoom({ character }: { character: Character }) {
                 {message.content || (loading && index === messages.length - 1 ? '思考中…' : '')}
               </div>
             ))}
+            {toolCalls.map((toolCall) => {
+              let arguments_: Record<string, unknown> = {};
+              try { arguments_ = JSON.parse(toolCall.argumentsJson) as Record<string, unknown>; } catch {}
+              return (
+                <div className={`tool-call-card ${toolCall.status}`} key={toolCall.id}>
+                  <div className="tool-call-heading">
+                    <span><Wrench size={15} /> {toolCall.toolName}</span>
+                    <strong>{toolCall.status}</strong>
+                  </div>
+                  <code>{JSON.stringify(arguments_, null, 2)}</code>
+                  {toolCall.resultJson ? <p>执行结果：{toolCall.resultJson}</p> : null}
+                  {toolCall.error ? <p className="error">错误：{toolCall.error}</p> : null}
+                  {toolCall.status === 'pending' ? (
+                    <div className="tool-call-actions">
+                      <button
+                        className="button primary"
+                        disabled={processingToolCall === toolCall.id}
+                        onClick={() => void reviewToolCall(toolCall.id, 'approve')}
+                        type="button"
+                      ><Check size={15} /> 批准执行</button>
+                      <button
+                        className="button danger"
+                        disabled={processingToolCall === toolCall.id}
+                        onClick={() => void reviewToolCall(toolCall.id, 'reject')}
+                        type="button"
+                      ><X size={15} /> 拒绝</button>
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
             {error && <div className="message assistant error">{error}</div>}
             <div ref={bottomRef} />
           </div>

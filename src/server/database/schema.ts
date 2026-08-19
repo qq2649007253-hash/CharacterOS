@@ -60,3 +60,25 @@ export const memories = sqliteTable('memories', {
   lastAccessedAt: text('last_accessed_at').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
+
+export const notes = sqliteTable('notes', {
+  characterId: text('character_id').notNull(),
+  content: text('content').notNull(),
+  createdAt: text('created_at').notNull(),
+  id: text('id').primaryKey(),
+  updatedAt: text('updated_at').notNull(),
+});
+
+export const toolCalls = sqliteTable('tool_calls', {
+  argumentsJson: text('arguments_json').notNull(),
+  characterId: text('character_id').notNull(),
+  conversationId: text('conversation_id').notNull(),
+  createdAt: text('created_at').notNull(),
+  error: text('error').notNull().default(''),
+  id: text('id').primaryKey(),
+  resultJson: text('result_json').notNull().default(''),
+  risk: text('risk', { enum: ['low', 'high'] }).notNull(),
+  status: text('status', { enum: ['pending', 'running', 'completed', 'rejected', 'failed'] }).notNull(),
+  toolName: text('tool_name').notNull(),
+  updatedAt: text('updated_at').notNull(),
+});

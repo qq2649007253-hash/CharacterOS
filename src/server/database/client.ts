@@ -73,10 +73,35 @@ sqlite.exec(`
     FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE,
     FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
   );
+  CREATE TABLE IF NOT EXISTS notes (
+    id TEXT PRIMARY KEY,
+    character_id TEXT NOT NULL,
+    content TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE
+  );
+  CREATE TABLE IF NOT EXISTS tool_calls (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    character_id TEXT NOT NULL,
+    tool_name TEXT NOT NULL,
+    arguments_json TEXT NOT NULL,
+    risk TEXT NOT NULL CHECK(risk IN ('low', 'high')),
+    status TEXT NOT NULL CHECK(status IN ('pending', 'running', 'completed', 'rejected', 'failed')),
+    result_json TEXT NOT NULL DEFAULT '',
+    error TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE,
+    FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+  );
   CREATE INDEX IF NOT EXISTS conversations_character_idx ON conversations(character_id, updated_at DESC);
   CREATE INDEX IF NOT EXISTS messages_conversation_idx ON messages(conversation_id, created_at);
   CREATE INDEX IF NOT EXISTS knowledge_chunks_character_idx ON knowledge_chunks(character_id);
   CREATE INDEX IF NOT EXISTS memories_character_idx ON memories(character_id, updated_at DESC);
+  CREATE INDEX IF NOT EXISTS notes_character_idx ON notes(character_id, updated_at DESC);
+  CREATE INDEX IF NOT EXISTS tool_calls_conversation_idx ON tool_calls(conversation_id, created_at);
 `);
 
 const characterColumns = sqlite.pragma('table_info(characters)') as Array<{ name: string }>;
