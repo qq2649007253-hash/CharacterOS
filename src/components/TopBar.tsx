@@ -1,4 +1,4 @@
-import { BrainCircuit } from 'lucide-react';
+import { Activity, BrainCircuit } from 'lucide-react';
 import Link from 'next/link';
 
 export function TopBar() {
@@ -8,7 +8,10 @@ export function TopBar() {
         <span className="brand-mark"><BrainCircuit size={20} /></span>
         <span>CharacterOS</span>
       </Link>
-      <span className="muted">Local-first Agent Runtime</span>
+      <div className="topbar-actions">
+        <Link className="button" href="/debug"><Activity size={15} /> 调试中心</Link>
+        <span className="muted">Local-first Agent Runtime</span>
+      </div>
     </header>
   );
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { toolApprovalSchema, type ToolName } from '@/domain/tool';
+import { agentRunRepository } from '@/server/repositories/agentRunRepository';
 import { characterRepository } from '@/server/repositories/characterRepository';
 import { conversationRepository } from '@/server/repositories/conversationRepository';
 import { toolCallRepository } from '@/server/repositories/toolCallRepository';
@@ -19,7 +20,10 @@ export const PATCH = async (request: Request, context: RouteContext<'/api/tool-c
 
   if (parsed.data.action === 'reject') {
     const updated = toolCallRepository.update(id, { status: 'rejected' });
-    conversationRepository.addMessage(toolCall.conversationId, 'assistant', '好的，我不会执行这项操作。');
+    const message = '好的，我不会执行这项操作。';
+    conversationRepository.addMessage(toolCall.conversationId, 'assistant', message);
+    const run = agentRunRepository.findByToolCall(id);
+    if (run) agentRunRepository.update(run.id, { completedAt: new Date().toISOString(), output: message, status: 'rejected' });
     return NextResponse.json({ toolCall: updated });
   }
 
@@ -33,12 +37,17 @@ export const PATCH = async (request: Request, context: RouteContext<'/api/tool-c
     );
     const result = await toolService.execute(toolCall.toolName as ToolName, arguments_, character.id);
     const updated = toolCallRepository.update(id, { resultJson: JSON.stringify(result), status: 'completed' });
-    conversationRepository.addMessage(toolCall.conversationId, 'assistant', '操作已经获得批准并执行完成。');
+    const message = '操作已经获得批准并执行完成。';
+    conversationRepository.addMessage(toolCall.conversationId, 'assistant', message);
+    const run = agentRunRepository.findByToolCall(id);
+    if (run) agentRunRepository.update(run.id, { completedAt: new Date().toISOString(), output: message, status: 'completed' });
     return NextResponse.json({ result, toolCall: updated });
   } catch (error) {
     const message = error instanceof Error ? error.message : '工具执行失败';
     const updated = toolCallRepository.update(id, { error: message, status: 'failed' });
     conversationRepository.addMessage(toolCall.conversationId, 'assistant', `工具执行失败：${message}`);
+    const run = agentRunRepository.findByToolCall(id);
+    if (run) agentRunRepository.update(run.id, { completedAt: new Date().toISOString(), error: message, status: 'failed' });
     return NextResponse.json({ error: message, toolCall: updated }, { status: 500 });
   }
 };

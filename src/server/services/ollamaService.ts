@@ -65,6 +65,18 @@ export const ollamaService = {
     return result.message?.content || '';
   },
 
+  async completeText(model: string, messages: Array<{ content: string; role: string }>, signal?: AbortSignal) {
+    const response = await fetch(`${baseUrl}/api/chat`, {
+      body: JSON.stringify({ messages, model, stream: false }),
+      headers: { 'Content-Type': 'application/json' },
+      method: 'POST',
+      signal,
+    });
+    if (!response.ok) throw new Error(`Ollama completion failed with HTTP ${response.status}`);
+    const result = (await response.json()) as { message?: { content?: string } };
+    return result.message?.content || '';
+  },
+
   async listModels(signal?: AbortSignal): Promise<OllamaModel[]> {
     const response = await fetch(`${baseUrl}/api/tags`, { cache: 'no-store', signal });
     if (!response.ok) throw new Error(`Ollama returned HTTP ${response.status}`);

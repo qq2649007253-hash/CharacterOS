@@ -98,12 +98,45 @@ sqlite.exec(`
     FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE,
     FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
   );
+  CREATE TABLE IF NOT EXISTS agent_runs (
+    id TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    character_id TEXT NOT NULL,
+    input TEXT NOT NULL,
+    output TEXT NOT NULL DEFAULT '',
+    model TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('running', 'awaiting_approval', 'completed', 'rejected', 'failed')),
+    knowledge_hits INTEGER NOT NULL DEFAULT 0,
+    memory_hits INTEGER NOT NULL DEFAULT 0,
+    retrieval_method TEXT NOT NULL DEFAULT 'none',
+    tool_call_id TEXT NOT NULL DEFAULT '',
+    latency_ms INTEGER NOT NULL DEFAULT 0,
+    error TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL,
+    completed_at TEXT NOT NULL DEFAULT '',
+    FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE,
+    FOREIGN KEY(conversation_id) REFERENCES conversations(id) ON DELETE CASCADE
+  );
+  CREATE TABLE IF NOT EXISTS evaluations (
+    id TEXT PRIMARY KEY,
+    character_id TEXT NOT NULL,
+    test_name TEXT NOT NULL,
+    input TEXT NOT NULL,
+    output TEXT NOT NULL,
+    score INTEGER NOT NULL,
+    passed INTEGER NOT NULL,
+    reason TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE
+  );
   CREATE INDEX IF NOT EXISTS conversations_character_idx ON conversations(character_id, updated_at DESC);
   CREATE INDEX IF NOT EXISTS messages_conversation_idx ON messages(conversation_id, created_at);
   CREATE INDEX IF NOT EXISTS knowledge_chunks_character_idx ON knowledge_chunks(character_id);
   CREATE INDEX IF NOT EXISTS memories_character_idx ON memories(character_id, updated_at DESC);
   CREATE INDEX IF NOT EXISTS notes_character_idx ON notes(character_id, updated_at DESC);
   CREATE INDEX IF NOT EXISTS tool_calls_conversation_idx ON tool_calls(conversation_id, created_at);
+  CREATE INDEX IF NOT EXISTS agent_runs_created_idx ON agent_runs(created_at DESC);
+  CREATE INDEX IF NOT EXISTS evaluations_created_idx ON evaluations(created_at DESC);
 `);
 
 const characterColumns = sqlite.pragma('table_info(characters)') as Array<{ name: string }>;

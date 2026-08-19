@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { chatRequestSchema } from '@/domain/chat';
+import { agentRunRepository } from '@/server/repositories/agentRunRepository';
 import { characterRepository } from '@/server/repositories/characterRepository';
 import { conversationRepository } from '@/server/repositories/conversationRepository';
 import { knowledgeRepository } from '@/server/repositories/knowledgeRepository';
@@ -30,12 +31,20 @@ export const POST = async (request: Request) => {
     conversationRepository.renameFromFirstMessage(conversation.id, content);
   }
   conversationRepository.addMessage(conversation.id, 'user', content);
+  const startedAt = Date.now();
+  const agentRun = agentRunRepository.create(conversation.id, character.id, content, character.model);
   const history = [...existingMessages, { content, role: 'user' as const }];
   const knowledge = await retrievalService.knowledge(character.id, content, 5, request.signal);
   const relevantMemories = retrievalService.memories(character.id, content);
+  agentRunRepository.update(agentRun.id, {
+    knowledgeHits: knowledge.length,
+    memoryHits: relevantMemories.length,
+    retrievalMethod: knowledge[0]?.method || 'none',
+  });
   const citationsJson = JSON.stringify(knowledge.map(({ documentId, score, title }) => ({ documentId, score, title })));
   const citationsHeader = Buffer.from(citationsJson, 'utf8').toString('base64url');
   const toolResults: Array<{ name: string; result: unknown }> = [];
+  let activeToolCallId = '';
 
   const decision = await toolPlannerService.decide(character, content, request.signal);
   if (decision.type === 'tool') {
@@ -49,9 +58,17 @@ export const POST = async (request: Request) => {
         JSON.stringify(arguments_),
         risk,
       );
+      activeToolCallId = toolCall.id;
       if (risk === 'high') {
         const message = `我准备调用工具「${decision.tool}」，该操作会修改本地数据，需要你批准后才能执行。`;
         conversationRepository.addMessage(conversation.id, 'assistant', message);
+        agentRunRepository.finish(agentRun.id, 'awaiting_approval', startedAt, {
+          knowledgeHits: knowledge.length,
+          memoryHits: relevantMemories.length,
+          output: message,
+          retrievalMethod: knowledge[0]?.method || 'none',
+          toolCallId: toolCall.id,
+        });
         return NextResponse.json(
           { message, toolCall, type: 'approval_required' },
           {
@@ -59,6 +76,7 @@ export const POST = async (request: Request) => {
               'X-Knowledge-Hits': String(knowledge.length),
               'X-Knowledge-Sources': citationsHeader,
               'X-Memory-Hits': String(relevantMemories.length),
+              'X-Agent-Run-Id': agentRun.id,
             },
             status: 202,
           },
@@ -104,6 +122,13 @@ export const POST = async (request: Request) => {
           if (assistantContent.trim()) {
             conversationRepository.addMessage(conversation.id, 'assistant', assistantContent, citationsJson);
             await memoryService.extract(character, conversation.id, content, assistantContent);
+            agentRunRepository.finish(agentRun.id, 'completed', startedAt, {
+              knowledgeHits: knowledge.length,
+              memoryHits: relevantMemories.length,
+              output: assistantContent,
+              retrievalMethod: knowledge[0]?.method || 'none',
+              toolCallId: activeToolCallId,
+            });
           }
         },
         transform(chunk, controller) {
@@ -127,11 +152,20 @@ export const POST = async (request: Request) => {
         'X-Knowledge-Hits': String(knowledge.length),
         'X-Knowledge-Sources': citationsHeader,
         'X-Memory-Hits': String(relevantMemories.length),
+        'X-Agent-Run-Id': agentRun.id,
       },
     });
   } catch (error) {
+    const message = error instanceof Error ? error.message : '模型调用失败';
+    agentRunRepository.finish(agentRun.id, 'failed', startedAt, {
+      error: message,
+      knowledgeHits: knowledge.length,
+      memoryHits: relevantMemories.length,
+      retrievalMethod: knowledge[0]?.method || 'none',
+      toolCallId: activeToolCallId,
+    });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : '模型调用失败' },
+      { error: message },
       { status: 502 },
     );
   }

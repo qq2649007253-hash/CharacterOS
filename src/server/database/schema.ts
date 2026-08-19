@@ -84,3 +84,33 @@ export const toolCalls = sqliteTable('tool_calls', {
   toolName: text('tool_name').notNull(),
   updatedAt: text('updated_at').notNull(),
 });
+
+export const agentRuns = sqliteTable('agent_runs', {
+  characterId: text('character_id').notNull(),
+  completedAt: text('completed_at').notNull().default(''),
+  conversationId: text('conversation_id').notNull(),
+  createdAt: text('created_at').notNull(),
+  error: text('error').notNull().default(''),
+  id: text('id').primaryKey(),
+  input: text('input').notNull(),
+  knowledgeHits: integer('knowledge_hits').notNull().default(0),
+  latencyMs: integer('latency_ms').notNull().default(0),
+  memoryHits: integer('memory_hits').notNull().default(0),
+  model: text('model').notNull(),
+  output: text('output').notNull().default(''),
+  retrievalMethod: text('retrieval_method').notNull().default('none'),
+  status: text('status', { enum: ['running', 'awaiting_approval', 'completed', 'rejected', 'failed'] }).notNull(),
+  toolCallId: text('tool_call_id').notNull().default(''),
+});
+
+export const evaluations = sqliteTable('evaluations', {
+  characterId: text('character_id').notNull(),
+  createdAt: text('created_at').notNull(),
+  id: text('id').primaryKey(),
+  input: text('input').notNull(),
+  output: text('output').notNull(),
+  passed: integer('passed', { mode: 'boolean' }).notNull(),
+  reason: text('reason').notNull(),
+  score: integer('score').notNull(),
+  testName: text('test_name').notNull(),
+});
