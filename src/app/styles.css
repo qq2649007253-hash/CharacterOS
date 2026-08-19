@@ -109,6 +109,14 @@ textarea.input { min-height: 120px; resize: vertical; line-height: 1.55; }
 .message { max-width: min(760px, 88%); padding: 13px 16px; border: 1px solid var(--border); border-radius: 16px; line-height: 1.65; white-space: pre-wrap; }
 .message.user { align-self: flex-end; background: rgba(137,110,224,.25); }
 .message.assistant { align-self: flex-start; background: var(--panel); }
+.message-content { overflow-wrap: anywhere; }
+.voice-toggle.active { color: #ffd5ef; border-color: rgba(255,145,207,.62); background: rgba(255,145,207,.12); }
+.message-voice {
+  display: inline-flex; align-items: center; gap: 5px; margin-top: 9px; padding: 4px 8px;
+  border: 1px solid transparent; border-radius: 8px; color: var(--muted); background: transparent;
+  font-size: 11px; transition: .18s ease;
+}
+.message-voice:hover, .message-voice.active { color: #ffd5ef; border-color: rgba(255,145,207,.28); background: rgba(255,145,207,.09); }
 .message-citations { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px solid var(--border); }
 .message-citations span { padding: 3px 7px; border-radius: 999px; color: #aebbe0; background: rgba(155,140,255,.1); font-size: 11px; }
 .tool-call-card {
@@ -159,6 +167,7 @@ textarea.input { min-height: 120px; resize: vertical; line-height: 1.55; }
   .agent-panel { display: none; }
   .container { padding-top: 28px; }
   .topbar-actions .muted { display: none; }
+  .voice-toggle { min-height: 38px; padding: 0 10px; font-size: 12px; }
   .metric-grid { grid-template-columns: 1fr 1fr; }
   .debug-section-heading, .debug-actions { align-items: stretch; flex-direction: column; }
 }

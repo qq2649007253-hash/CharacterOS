@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, BookOpen, Brain, Check, MessageSquarePlus, Plus, Send, Square, Wrench, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, Brain, Check, MessageSquarePlus, Plus, Send, Square, Volume2, VolumeX, Wrench, X } from 'lucide-react';
 import Link from 'next/link';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 
@@ -41,11 +41,57 @@ export function ChatRoom({ character }: { character: Character }) {
   const [indexingKnowledge, setIndexingKnowledge] = useState(false);
   const [toolCalls, setToolCalls] = useState<ToolCallRecord[]>([]);
   const [processingToolCall, setProcessingToolCall] = useState('');
+  const [autoSpeak, setAutoSpeak] = useState(false);
+  const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
   const abortRef = useRef<AbortController>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
+  const speechRequestRef = useRef(0);
+
+  const stopSpeaking = () => {
+    speechRequestRef.current += 1;
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+    setSpeakingMessageIndex(null);
+  };
+
+  const speakMessage = (content: string, messageIndex: number) => {
+    const text = content.trim();
+    if (!text || typeof window === 'undefined') return;
+    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
+      setError('当前浏览器不支持语音朗读，请使用最新版 Chrome 或 Edge');
+      return;
+    }
+    if (speakingMessageIndex === messageIndex && window.speechSynthesis.speaking) {
+      stopSpeaking();
+      return;
+    }
+
+    const requestId = speechRequestRef.current + 1;
+    speechRequestRef.current = requestId;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'zh-CN';
+    utterance.rate = 1;
+    utterance.pitch = 1.08;
+    const voices = window.speechSynthesis.getVoices();
+    const chineseVoices = voices.filter((voice) => /^zh([_-]|$)/i.test(voice.lang));
+    const preferredVoice = chineseVoices.find((voice) => /xiaoxiao|xiaoyi|huihui|female|女/i.test(voice.name)) || chineseVoices[0];
+    if (preferredVoice) utterance.voice = preferredVoice;
+    utterance.onend = () => {
+      if (speechRequestRef.current === requestId) setSpeakingMessageIndex(null);
+    };
+    utterance.onerror = (event) => {
+      if (speechRequestRef.current !== requestId) return;
+      setSpeakingMessageIndex(null);
+      if (event.error !== 'canceled' && event.error !== 'interrupted') setError('语音播放失败，请检查系统语音设置');
+    };
+    setError('');
+    setSpeakingMessageIndex(messageIndex);
+    window.speechSynthesis.speak(utterance);
+  };
 
   const loadConversation = async (id: string) => {
+    stopSpeaking();
     setRestoring(true);
     const response = await fetch(`/api/conversations/${id}`, { cache: 'no-store' });
     if (!response.ok) throw new Error('恢复会话失败');
@@ -145,6 +191,11 @@ export function ChatRoom({ character }: { character: Character }) {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => () => {
+    speechRequestRef.current += 1;
+    window.speechSynthesis?.cancel();
+  }, []);
+
   const reviewToolCall = async (id: string, action: 'approve' | 'reject') => {
     setProcessingToolCall(id);
     setError('');
@@ -176,6 +227,7 @@ export function ChatRoom({ character }: { character: Character }) {
     setInput('');
     setError('');
     setLoading(true);
+    const assistantMessageIndex = messages.length + 1;
     const controller = new AbortController();
     abortRef.current = controller;
     try {
@@ -211,14 +263,17 @@ export function ChatRoom({ character }: { character: Character }) {
             ? { ...item, title: content.replace(/\s+/g, ' ').slice(0, 24) }
             : item
         )));
+        if (autoSpeak) speakMessage(data.message, assistantMessageIndex);
         return;
       }
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
+      let assistantReply = '';
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         const text = decoder.decode(value, { stream: true });
+        assistantReply += text;
         setMessages((items) => {
           const updated = [...items];
           const last = updated.at(-1);
@@ -235,6 +290,7 @@ export function ChatRoom({ character }: { character: Character }) {
           ? { ...item, title: content.replace(/\s+/g, ' ').slice(0, 24) }
           : item
       )));
+      if (autoSpeak) speakMessage(assistantReply, assistantMessageIndex);
       await refreshContextData();
     } catch (caught) {
       if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : '模型请求失败');
@@ -248,7 +304,21 @@ export function ChatRoom({ character }: { character: Character }) {
     <div className="app-shell">
       <header className="topbar">
         <Link className="button" href="/"><ArrowLeft size={16} /> 角色列表</Link>
-        <div className="brand">{character.name} <span className="muted">· {character.model}</span></div>
+        <div className="topbar-actions">
+          <div className="brand">{character.name} <span className="muted">· {character.model}</span></div>
+          <button
+            aria-pressed={autoSpeak}
+            className={`button voice-toggle ${autoSpeak ? 'active' : ''}`}
+            onClick={() => {
+              setAutoSpeak((enabled) => !enabled);
+              if (autoSpeak) stopSpeaking();
+            }}
+            title="角色回复完成后自动朗读"
+            type="button"
+          >
+            <Volume2 size={16} /> 自动朗读 {autoSpeak ? '开' : '关'}
+          </button>
+        </div>
       </header>
       <main className="chat-layout">
         <aside className="agent-panel">
@@ -304,13 +374,25 @@ export function ChatRoom({ character }: { character: Character }) {
             {restoring ? <div className="message assistant">正在恢复会话…</div> : null}
             {messages.map((message, index) => (
               <div className={`message ${message.role}`} key={`${message.role}-${index}`}>
-                <span>{message.content || (loading && index === messages.length - 1 ? '思考中…' : '')}</span>
+                <div className="message-content">{message.content || (loading && index === messages.length - 1 ? '思考中…' : '')}</div>
                 {parseCitations(message.citationsJson).length ? (
                   <div className="message-citations">
                     {parseCitations(message.citationsJson).map((citation) => (
                       <span key={citation.documentId}>来源：{citation.title} · {citation.score.toFixed(2)}</span>
                     ))}
                   </div>
+                ) : null}
+                {message.role === 'assistant' && message.content && !(loading && index === messages.length - 1) ? (
+                  <button
+                    aria-label={speakingMessageIndex === index ? '停止朗读' : '朗读角色回复'}
+                    className={`message-voice ${speakingMessageIndex === index ? 'active' : ''}`}
+                    onClick={() => speakMessage(message.content, index)}
+                    title={speakingMessageIndex === index ? '停止朗读' : '朗读这条回复'}
+                    type="button"
+                  >
+                    {speakingMessageIndex === index ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                    {speakingMessageIndex === index ? '停止' : '朗读'}
+                  </button>
                 ) : null}
               </div>
             ))}
