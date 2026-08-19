@@ -141,7 +141,9 @@ export function ChatRoom({ character }: { character: Character }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [character.id]);
 
-  useEffect(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), [messages]);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
 
   const reviewToolCall = async (id: string, action: 'approve' | 'reject') => {
     setProcessingToolCall(id);
