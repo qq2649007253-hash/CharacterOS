@@ -2,6 +2,10 @@ node_modules/
 .next/
 data/*.db
 data/*.db-*
+data/tts/
+.venv-tts*/
+__pycache__/
+*.pyc
 .env
 .env.local
 coverage/

@@ -49,49 +49,81 @@ export function ChatRoom({ character }: { character: Character }) {
   const bottomRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
   const speechRequestRef = useRef(0);
+  const speechAbortRef = useRef<AbortController>(null);
+  const audioRef = useRef<{ audio: HTMLAudioElement; url: string }>(null);
 
   const stopSpeaking = () => {
     speechRequestRef.current += 1;
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) window.speechSynthesis.cancel();
+    speechAbortRef.current?.abort();
+    speechAbortRef.current = null;
+    if (audioRef.current) {
+      audioRef.current.audio.pause();
+      audioRef.current.audio.removeAttribute('src');
+      URL.revokeObjectURL(audioRef.current.url);
+      audioRef.current = null;
+    }
     setSpeakingMessageIndex(null);
   };
 
-  const speakMessage = (content: string, messageIndex: number) => {
+  const speakMessage = async (content: string, messageIndex: number) => {
     const text = content.trim();
     if (!text || typeof window === 'undefined') return;
-    if (!('speechSynthesis' in window) || !('SpeechSynthesisUtterance' in window)) {
-      setError('当前浏览器不支持语音朗读，请使用最新版 Chrome 或 Edge');
-      return;
-    }
-    if (speakingMessageIndex === messageIndex && window.speechSynthesis.speaking) {
+    if (speakingMessageIndex === messageIndex) {
       stopSpeaking();
       return;
     }
 
+    stopSpeaking();
     const requestId = speechRequestRef.current + 1;
     speechRequestRef.current = requestId;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'zh-CN';
-    utterance.rate = voiceProfile.rate;
-    utterance.pitch = voiceProfile.pitch;
-    const voices = window.speechSynthesis.getVoices();
-    const chineseVoices = voices.filter((voice) => /^zh([_-]|$)/i.test(voice.lang));
-    const preferredVoice = chineseVoices.find((voice) => (
-      voiceProfile.voiceKeywords.some((keyword) => voice.name.toLowerCase().includes(keyword))
-    )) || chineseVoices[0];
-    if (preferredVoice) utterance.voice = preferredVoice;
-    utterance.onend = () => {
-      if (speechRequestRef.current === requestId) setSpeakingMessageIndex(null);
-    };
-    utterance.onerror = (event) => {
-      if (speechRequestRef.current !== requestId) return;
-      setSpeakingMessageIndex(null);
-      if (event.error !== 'canceled' && event.error !== 'interrupted') setError('语音播放失败，请检查系统语音设置');
-    };
+    const controller = new AbortController();
+    speechAbortRef.current = controller;
     setError('');
     setSpeakingMessageIndex(messageIndex);
-    window.speechSynthesis.speak(utterance);
+    try {
+      const response = await fetch('/api/tts', {
+        body: JSON.stringify({ characterId: character.id, text }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        const payload = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(payload.error || '语音生成失败');
+      }
+      const audioUrl = URL.createObjectURL(await response.blob());
+      if (speechRequestRef.current !== requestId) {
+        URL.revokeObjectURL(audioUrl);
+        return;
+      }
+      const audio = new Audio(audioUrl);
+      audioRef.current = { audio, url: audioUrl };
+      const finish = () => {
+        if (audioRef.current?.audio === audio) {
+          URL.revokeObjectURL(audioUrl);
+          audioRef.current = null;
+        }
+        if (speechRequestRef.current === requestId) setSpeakingMessageIndex(null);
+      };
+      audio.onended = finish;
+      audio.onerror = () => {
+        finish();
+        if (speechRequestRef.current === requestId) setError('语音音频播放失败');
+      };
+      await audio.play();
+    } catch (caught) {
+      if (controller.signal.aborted || speechRequestRef.current !== requestId) return;
+      if (audioRef.current) {
+        audioRef.current.audio.pause();
+        audioRef.current.audio.removeAttribute('src');
+        URL.revokeObjectURL(audioRef.current.url);
+        audioRef.current = null;
+      }
+      setSpeakingMessageIndex(null);
+      setError(caught instanceof Error ? caught.message : '语音生成失败');
+    } finally {
+      if (speechAbortRef.current === controller) speechAbortRef.current = null;
+    }
   };
 
   const loadConversation = async (id: string) => {
@@ -197,7 +229,11 @@ export function ChatRoom({ character }: { character: Character }) {
 
   useEffect(() => () => {
     speechRequestRef.current += 1;
-    window.speechSynthesis?.cancel();
+    speechAbortRef.current?.abort();
+    if (audioRef.current) {
+      audioRef.current.audio.pause();
+      URL.revokeObjectURL(audioRef.current.url);
+    }
   }, []);
 
   const reviewToolCall = async (id: string, action: 'approve' | 'reject') => {
@@ -267,7 +303,7 @@ export function ChatRoom({ character }: { character: Character }) {
             ? { ...item, title: content.replace(/\s+/g, ' ').slice(0, 24) }
             : item
         )));
-        if (autoSpeak) speakMessage(data.message, assistantMessageIndex);
+        if (autoSpeak) void speakMessage(data.message, assistantMessageIndex);
         return;
       }
       const reader = response.body.getReader();
@@ -294,7 +330,7 @@ export function ChatRoom({ character }: { character: Character }) {
           ? { ...item, title: content.replace(/\s+/g, ' ').slice(0, 24) }
           : item
       )));
-      if (autoSpeak) speakMessage(assistantReply, assistantMessageIndex);
+      if (autoSpeak) void speakMessage(assistantReply, assistantMessageIndex);
       await refreshContextData();
     } catch (caught) {
       if (!controller.signal.aborted) setError(caught instanceof Error ? caught.message : '模型请求失败');
@@ -310,8 +346,8 @@ export function ChatRoom({ character }: { character: Character }) {
         <Link className="button" href="/"><ArrowLeft size={16} /> 角色列表</Link>
         <div className="topbar-actions">
           <div className="brand">{character.name} <span className="muted">· {character.model}</span></div>
-          <span className="voice-disclosure" title="此声线由浏览器语音引擎合成，不是角色原配录音">
-            AI 合成 · {voiceProfile.label}
+          <span className="voice-disclosure" title="此声线由本地 Kokoro 模型合成，不是角色原配录音">
+            本地多音色 · {voiceProfile.label}
           </span>
           <button
             aria-pressed={autoSpeak}
@@ -393,8 +429,8 @@ export function ChatRoom({ character }: { character: Character }) {
                   <button
                     aria-label={speakingMessageIndex === index ? '停止朗读' : '朗读角色回复'}
                     className={`message-voice ${speakingMessageIndex === index ? 'active' : ''}`}
-                    onClick={() => speakMessage(message.content, index)}
-                    title={speakingMessageIndex === index ? '停止朗读' : `使用“${voiceProfile.label}”AI 声线朗读`}
+                    onClick={() => void speakMessage(message.content, index)}
+                    title={speakingMessageIndex === index ? '停止朗读' : `使用“${voiceProfile.label}”本地声线朗读`}
                     type="button"
                   >
                     {speakingMessageIndex === index ? <VolumeX size={14} /> : <Volume2 size={14} />}

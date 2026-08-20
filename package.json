@@ -9,7 +9,9 @@
     "start": "next start",
     "lint": "eslint .",
     "seed": "node scripts/seed-characters.mjs",
-    "test": "vitest run"
+    "test": "vitest run",
+    "tts": ".venv-tts-native\\Scripts\\python.exe scripts\\kokoro-tts-server.py",
+    "tts:setup": "powershell -ExecutionPolicy Bypass -File scripts\\setup-tts.ps1"
   },
   "dependencies": {
     "better-sqlite3": "latest",
