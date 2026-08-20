@@ -70,7 +70,7 @@ pnpm tts:setup
 pnpm tts
 ```
 
-然后保持该窗口运行，另开一个窗口启动 CharacterOS。角色回复下方可以手动朗读，顶部可开启自动朗读。七种声线使用不同的 Kokoro 中文说话人，不是角色原配录音或声音克隆。[Kokoro-82M-v1.1-zh](https://huggingface.co/hexgrad/Kokoro-82M-v1.1-zh) 模型权重使用 Apache-2.0 许可；模型文件保存在 `data/tts/` 并且不会提交到 Git。
+然后保持该窗口运行，另开一个窗口启动 CharacterOS。角色回复下方可以手动朗读，顶部可开启自动朗读。七种声线使用不同的 Kokoro 中文说话人，并使用 v1.1 中文音素词表；它们不是角色原配录音或声音克隆。[Kokoro-82M-v1.1-zh](https://huggingface.co/hexgrad/Kokoro-82M-v1.1-zh) 模型权重使用 Apache-2.0 许可；模型文件保存在 `data/tts/` 并且不会提交到 Git。
 
 ## HTTP API
 

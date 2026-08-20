@@ -26,6 +26,8 @@ class Runtime:
             raise FileNotFoundError(f"Missing TTS files: {', '.join(missing)}. Run pnpm tts:setup first.")
         self.g2p = zh.ZHG2P(version="1.1")
         self.kokoro = Kokoro(str(model), str(voices), vocab_config=str(config))
+        if "ㄅ" not in self.kokoro.tokenizer.vocab:
+            raise RuntimeError("The Kokoro v1.1 Chinese vocabulary is missing. Run pnpm tts:setup again.")
         self.lock = Lock()
 
     def synthesize(self, text: str, voice: str, speed: float) -> bytes:

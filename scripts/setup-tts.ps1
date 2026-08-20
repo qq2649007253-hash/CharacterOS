@@ -24,6 +24,10 @@ try {
     "voices/zf_099.bin"
   )
   & ".venv-tts-native\Scripts\modelscope.exe" download $modelId @files --local-dir "data\tts\source"
+  & ".venv-tts-native\Scripts\modelscope.exe" download `
+    "hexgrad/Kokoro-82M-v1.1-zh" `
+    "config.json" `
+    --local-dir "data\tts\v1.1-config"
   & ".venv-tts-native\Scripts\python.exe" "scripts\prepare-tts.py"
 } finally {
   Pop-Location

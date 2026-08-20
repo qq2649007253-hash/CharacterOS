@@ -25,10 +25,8 @@ def main() -> None:
 
     shutil.move(SOURCE_DIR / "onnx" / "model.onnx", TTS_DIR / "kokoro-v1.1-zh.onnx")
 
-    from kokoro_onnx import __file__ as package_file
-
-    package_config = Path(package_file).with_name("config.json")
-    shutil.copyfile(package_config, TTS_DIR / "config.json")
+    config_source = TTS_DIR / "v1.1-config" / "config.json"
+    shutil.copyfile(config_source, TTS_DIR / "config.json")
     print(f"Prepared Kokoro model with {len(voices)} distinct voices in {TTS_DIR}")
 
 
