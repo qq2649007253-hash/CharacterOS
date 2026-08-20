@@ -8,6 +8,7 @@ import type { Character } from '@/domain/character';
 import type { Conversation, MessageCitation, PersistedMessage } from '@/domain/conversation';
 import type { KnowledgeDocument } from '@/domain/knowledge';
 import type { ToolCallRecord } from '@/domain/tool';
+import { VOICE_PROFILES } from '@/domain/voice';
 
 type Message = Pick<PersistedMessage, 'citationsJson' | 'content' | 'role'>;
 
@@ -25,6 +26,7 @@ const decodeCitationsHeader = (value: string | null) => {
 };
 
 export function ChatRoom({ character }: { character: Character }) {
+  const voiceProfile = VOICE_PROFILES[character.voiceProfile];
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversationId, setConversationId] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -71,11 +73,13 @@ export function ChatRoom({ character }: { character: Character }) {
     window.speechSynthesis.cancel();
     const utterance = new SpeechSynthesisUtterance(text);
     utterance.lang = 'zh-CN';
-    utterance.rate = 1;
-    utterance.pitch = 1.08;
+    utterance.rate = voiceProfile.rate;
+    utterance.pitch = voiceProfile.pitch;
     const voices = window.speechSynthesis.getVoices();
     const chineseVoices = voices.filter((voice) => /^zh([_-]|$)/i.test(voice.lang));
-    const preferredVoice = chineseVoices.find((voice) => /xiaoxiao|xiaoyi|huihui|female|女/i.test(voice.name)) || chineseVoices[0];
+    const preferredVoice = chineseVoices.find((voice) => (
+      voiceProfile.voiceKeywords.some((keyword) => voice.name.toLowerCase().includes(keyword))
+    )) || chineseVoices[0];
     if (preferredVoice) utterance.voice = preferredVoice;
     utterance.onend = () => {
       if (speechRequestRef.current === requestId) setSpeakingMessageIndex(null);
@@ -306,6 +310,9 @@ export function ChatRoom({ character }: { character: Character }) {
         <Link className="button" href="/"><ArrowLeft size={16} /> 角色列表</Link>
         <div className="topbar-actions">
           <div className="brand">{character.name} <span className="muted">· {character.model}</span></div>
+          <span className="voice-disclosure" title="此声线由浏览器语音引擎合成，不是角色原配录音">
+            AI 合成 · {voiceProfile.label}
+          </span>
           <button
             aria-pressed={autoSpeak}
             className={`button voice-toggle ${autoSpeak ? 'active' : ''}`}
@@ -313,7 +320,7 @@ export function ChatRoom({ character }: { character: Character }) {
               setAutoSpeak((enabled) => !enabled);
               if (autoSpeak) stopSpeaking();
             }}
-            title="角色回复完成后自动朗读"
+            title={`回复完成后使用“${voiceProfile.label}”AI 声线朗读`}
             type="button"
           >
             <Volume2 size={16} /> 自动朗读 {autoSpeak ? '开' : '关'}
@@ -387,7 +394,7 @@ export function ChatRoom({ character }: { character: Character }) {
                     aria-label={speakingMessageIndex === index ? '停止朗读' : '朗读角色回复'}
                     className={`message-voice ${speakingMessageIndex === index ? 'active' : ''}`}
                     onClick={() => speakMessage(message.content, index)}
-                    title={speakingMessageIndex === index ? '停止朗读' : '朗读这条回复'}
+                    title={speakingMessageIndex === index ? '停止朗读' : `使用“${voiceProfile.label}”AI 声线朗读`}
                     type="button"
                   >
                     {speakingMessageIndex === index ? <VolumeX size={14} /> : <Volume2 size={14} />}

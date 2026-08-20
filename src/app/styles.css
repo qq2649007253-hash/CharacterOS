@@ -71,6 +71,7 @@ a { color: inherit; text-decoration: none; }
 .character-overlay { position: absolute; inset: auto 0 0; padding: 64px 18px 18px; background: linear-gradient(transparent, rgba(7,10,20,.96)); }
 .character-overlay h2 { margin: 0 0 6px; }
 .character-overlay p { overflow: hidden; margin: 0; color: var(--muted); text-overflow: ellipsis; white-space: nowrap; }
+.card-voice-label { display: inline-block; margin-top: 8px; color: #f0b9dc; font-size: 11px; }
 .empty { padding: 72px 24px; text-align: center; color: var(--muted); }
 .form-card { padding: 22px; }
 .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
@@ -111,6 +112,7 @@ textarea.input { min-height: 120px; resize: vertical; line-height: 1.55; }
 .message.assistant { align-self: flex-start; background: var(--panel); }
 .message-content { overflow-wrap: anywhere; }
 .voice-toggle.active { color: #ffd5ef; border-color: rgba(255,145,207,.62); background: rgba(255,145,207,.12); }
+.voice-disclosure { padding: 5px 9px; border: 1px solid rgba(255,145,207,.25); border-radius: 999px; color: #f0b9dc; background: rgba(255,145,207,.08); font-size: 11px; white-space: nowrap; }
 .message-voice {
   display: inline-flex; align-items: center; gap: 5px; margin-top: 9px; padding: 4px 8px;
   border: 1px solid transparent; border-radius: 8px; color: var(--muted); background: transparent;
@@ -167,6 +169,7 @@ textarea.input { min-height: 120px; resize: vertical; line-height: 1.55; }
   .agent-panel { display: none; }
   .container { padding-top: 28px; }
   .topbar-actions .muted { display: none; }
+  .voice-disclosure { display: none; }
   .voice-toggle { min-height: 38px; padding: 0 10px; font-size: 12px; }
   .metric-grid { grid-template-columns: 1fr 1fr; }
   .debug-section-heading, .debug-actions { align-items: stretch; flex-direction: column; }

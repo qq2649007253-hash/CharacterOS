@@ -11,6 +11,7 @@ const validCharacter = {
   model: 'qwen2.5:7b',
   name: '爱莉希雅',
   systemPrompt: '保持温柔而真诚的表达。',
+  voiceProfile: 'bright',
 };
 
 describe('character input', () => {
@@ -25,5 +26,9 @@ describe('character input', () => {
   it('requires at least one field in a patch', () => {
     expect(characterPatchSchema.safeParse({}).success).toBe(false);
     expect(characterPatchSchema.safeParse({ description: '更新' }).success).toBe(true);
+  });
+
+  it('rejects an unknown voice profile', () => {
+    expect(characterInputSchema.safeParse({ ...validCharacter, voiceProfile: 'original-clone' }).success).toBe(false);
   });
 });

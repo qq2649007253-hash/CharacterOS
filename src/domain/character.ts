@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { VOICE_PROFILE_IDS } from './voice';
+
 const characterFields = {
   avatarUrl: z.string().max(2048),
   coverUrl: z.string().max(2048),
@@ -9,6 +11,7 @@ const characterFields = {
   model: z.string().trim().min(1).max(120),
   name: z.string().trim().min(1).max(64),
   systemPrompt: z.string().trim().min(1).max(20_000),
+  voiceProfile: z.enum(VOICE_PROFILE_IDS),
 };
 
 export const characterInputSchema = z.object({
@@ -17,6 +20,7 @@ export const characterInputSchema = z.object({
   coverUrl: characterFields.coverUrl.default(''),
   description: characterFields.description.default(''),
   lore: characterFields.lore.default(''),
+  voiceProfile: characterFields.voiceProfile.default('neutral'),
 });
 
 export const characterPatchSchema = z.object(characterFields).partial().refine(

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useState } from 'react';
 
 import type { Character, CharacterInput } from '@/domain/character';
+import { VOICE_PROFILES } from '@/domain/voice';
 
 interface ModelStatus {
   error?: string;
@@ -22,6 +23,7 @@ const initialForm: CharacterInput = {
   model: 'qwen2.5:7b',
   name: '',
   systemPrompt: '你是一个真诚、可靠的角色助手。请保持人设一致，不确定的事实要坦诚说明。',
+  voiceProfile: 'neutral',
 };
 
 export function CharacterDashboard() {
@@ -56,7 +58,7 @@ export function CharacterDashboard() {
     checkModels();
   }, [checkModels, loadCharacters]);
 
-  const update = (key: keyof CharacterInput, value: string) =>
+  const update = <Key extends keyof CharacterInput>(key: Key, value: CharacterInput[Key]) =>
     setForm((current) => ({ ...current, [key]: value }));
 
   const submit = async (event: FormEvent) => {
@@ -121,6 +123,19 @@ export function CharacterDashboard() {
               </select>
             </div>
             <div className="field wide">
+              <label htmlFor="voiceProfile">AI 合成声线</label>
+              <select
+                id="voiceProfile"
+                className="input"
+                onChange={(event) => update('voiceProfile', event.target.value as CharacterInput['voiceProfile'])}
+                value={form.voiceProfile}
+              >
+                {Object.entries(VOICE_PROFILES).map(([id, profile]) => (
+                  <option key={id} value={id}>{profile.label} · {profile.description}</option>
+                ))}
+              </select>
+            </div>
+            <div className="field wide">
               <label htmlFor="description">一句话介绍</label>
               <input id="description" className="input" maxLength={240} onChange={(e) => update('description', e.target.value)} value={form.description} />
             </div>
@@ -163,6 +178,7 @@ export function CharacterDashboard() {
               <div className="character-overlay">
                 <h2>{character.name}</h2>
                 <p>{character.description || character.model}</p>
+                <span className="card-voice-label">AI 合成 · {VOICE_PROFILES[character.voiceProfile].label}</span>
                 <div className="actions">
                   <Link className="button primary" href={`/chat/${character.id}`}>
                     开始对话 <ArrowRight size={16} />

@@ -23,7 +23,8 @@ sqlite.exec(`
     system_prompt TEXT NOT NULL,
     model TEXT NOT NULL,
     created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    voice_profile TEXT NOT NULL DEFAULT 'neutral'
   );
   CREATE TABLE IF NOT EXISTS conversations (
     id TEXT PRIMARY KEY,
@@ -142,6 +143,9 @@ sqlite.exec(`
 const characterColumns = sqlite.pragma('table_info(characters)') as Array<{ name: string }>;
 if (!characterColumns.some((column) => column.name === 'lore')) {
   sqlite.exec("ALTER TABLE characters ADD COLUMN lore TEXT NOT NULL DEFAULT ''");
+}
+if (!characterColumns.some((column) => column.name === 'voice_profile')) {
+  sqlite.exec("ALTER TABLE characters ADD COLUMN voice_profile TEXT NOT NULL DEFAULT 'neutral'");
 }
 
 const messageColumns = sqlite.pragma('table_info(messages)') as Array<{ name: string }>;
