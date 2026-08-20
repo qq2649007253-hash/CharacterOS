@@ -8,7 +8,7 @@ import type { Character } from '@/domain/character';
 import type { Conversation, MessageCitation, PersistedMessage } from '@/domain/conversation';
 import type { KnowledgeDocument } from '@/domain/knowledge';
 import type { ToolCallRecord } from '@/domain/tool';
-import { VOICE_PROFILES } from '@/domain/voice';
+import { resolveVoiceId, voiceDisplayName, VOICE_PROFILES } from '@/domain/voice';
 
 type Message = Pick<PersistedMessage, 'citationsJson' | 'content' | 'role'>;
 
@@ -27,6 +27,7 @@ const decodeCitationsHeader = (value: string | null) => {
 
 export function ChatRoom({ character }: { character: Character }) {
   const voiceProfile = VOICE_PROFILES[character.voiceProfile];
+  const voiceId = resolveVoiceId(character.voiceProfile, character.voiceId);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversationId, setConversationId] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
@@ -347,7 +348,7 @@ export function ChatRoom({ character }: { character: Character }) {
         <div className="topbar-actions">
           <div className="brand">{character.name} <span className="muted">· {character.model}</span></div>
           <span className="voice-disclosure" title="此声线由本地 Kokoro 模型合成，不是角色原配录音">
-            本地多音色 · {voiceProfile.label}
+            本地多音色 · {voiceProfile.label} · {voiceDisplayName(voiceId)}
           </span>
           <button
             aria-pressed={autoSpeak}

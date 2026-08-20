@@ -12,6 +12,7 @@ export const characters = sqliteTable('characters', {
   name: text('name').notNull(),
   systemPrompt: text('system_prompt').notNull(),
   updatedAt: text('updated_at').notNull(),
+  voiceId: text('voice_id').notNull().default(''),
   voiceProfile: text('voice_profile', { enum: ['bright', 'mature', 'mysterious', 'playful', 'steady', 'cool', 'neutral'] }).notNull().default('neutral'),
 });
 

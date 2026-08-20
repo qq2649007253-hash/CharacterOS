@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import { VOICE_PROFILE_IDS } from './voice';
+import { KOKORO_VOICE_ID_PATTERN, VOICE_PROFILE_IDS } from './voice';
 
 const characterFields = {
   avatarUrl: z.string().max(2048),
@@ -11,6 +11,10 @@ const characterFields = {
   model: z.string().trim().min(1).max(120),
   name: z.string().trim().min(1).max(64),
   systemPrompt: z.string().trim().min(1).max(20_000),
+  voiceId: z.string().trim().max(16).refine(
+    (value) => !value || KOKORO_VOICE_ID_PATTERN.test(value),
+    '语音 ID 不合法',
+  ),
   voiceProfile: z.enum(VOICE_PROFILE_IDS),
 };
 
@@ -20,6 +24,7 @@ export const characterInputSchema = z.object({
   coverUrl: characterFields.coverUrl.default(''),
   description: characterFields.description.default(''),
   lore: characterFields.lore.default(''),
+  voiceId: characterFields.voiceId.default(''),
   voiceProfile: characterFields.voiceProfile.default('neutral'),
 });
 

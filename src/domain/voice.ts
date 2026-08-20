@@ -2,6 +2,8 @@ export const VOICE_PROFILE_IDS = ['bright', 'mature', 'mysterious', 'playful', '
 
 export type VoiceProfileId = typeof VOICE_PROFILE_IDS[number];
 
+export const KOKORO_VOICE_ID_PATTERN = /^zf_\d{3}$/;
+
 interface VoiceProfile {
   description: string;
   kokoroVoice: string;
@@ -53,3 +55,8 @@ export const VOICE_PROFILES: Record<VoiceProfileId, VoiceProfile> = {
     rate: 1,
   },
 };
+
+export const resolveVoiceId = (profileId: VoiceProfileId, voiceId?: string) =>
+  voiceId && KOKORO_VOICE_ID_PATTERN.test(voiceId) ? voiceId : VOICE_PROFILES[profileId].kokoroVoice;
+
+export const voiceDisplayName = (voiceId: string) => `中文女声 ${voiceId.replace('zf_', '')}`;

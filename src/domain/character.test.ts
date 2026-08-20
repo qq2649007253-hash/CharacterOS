@@ -11,6 +11,7 @@ const validCharacter = {
   model: 'qwen2.5:7b',
   name: '爱莉希雅',
   systemPrompt: '保持温柔而真诚的表达。',
+  voiceId: 'zf_001',
   voiceProfile: 'bright',
 };
 
@@ -30,5 +31,9 @@ describe('character input', () => {
 
   it('rejects an unknown voice profile', () => {
     expect(characterInputSchema.safeParse({ ...validCharacter, voiceProfile: 'original-clone' }).success).toBe(false);
+  });
+
+  it('rejects a malformed concrete voice id', () => {
+    expect(characterInputSchema.safeParse({ ...validCharacter, voiceId: 'official-clone' }).success).toBe(false);
   });
 });

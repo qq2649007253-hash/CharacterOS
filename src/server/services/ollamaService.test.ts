@@ -16,6 +16,7 @@ const character: Character = {
   name: '测试角色',
   systemPrompt: '这是受保护的系统人设',
   updatedAt: '2026-01-01T00:00:00.000Z',
+  voiceId: '',
   voiceProfile: 'neutral',
 };
 

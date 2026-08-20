@@ -33,7 +33,7 @@ CharacterOS 是一个从零实现、本地优先的角色智能体平台，不�
 - 角色身份隔离与设定一致性约束
 - 角色和知识库管理 API
 - Ollama 本地模型发现、健康检查与流式对话
-- Kokoro 本地多说话人语音合成，7 种角色声线相互隔离
+- Kokoro 本地多说话人语音合成，55 种中文女声可试听并按角色持久化
 - 可恢复历史会话的聊天界面
 
 ## 本地运行
@@ -70,7 +70,7 @@ pnpm tts:setup
 pnpm tts
 ```
 
-然后保持该窗口运行，另开一个窗口启动 CharacterOS。角色回复下方可以手动朗读，顶部可开启自动朗读。七种声线使用不同的 Kokoro 中文说话人，并使用 v1.1 中文音素词表；它们不是角色原配录音或声音克隆。[Kokoro-82M-v1.1-zh](https://huggingface.co/hexgrad/Kokoro-82M-v1.1-zh) 模型权重使用 Apache-2.0 许可；模型文件保存在 `data/tts/` 并且不会提交到 Git。
+然后保持该窗口运行，另开一个窗口启动 CharacterOS。点击角色卡片上的编辑按钮，可以用同一句开场白逐个试听 55 种中文女声，并把选中的具体音色保存给该角色。角色回复下方可以手动朗读，顶部可开启自动朗读。声线使用 Kokoro v1.1 中文说话人与中文音素词表；它们不是角色原配录音或声音克隆。[Kokoro-82M-v1.1-zh](https://huggingface.co/hexgrad/Kokoro-82M-v1.1-zh) 模型权重使用 Apache-2.0 许可；模型文件保存在 `data/tts/` 并且不会提交到 Git。
 
 ## HTTP API
 
@@ -83,7 +83,8 @@ pnpm tts
 - `GET /api/conversations/:id`：恢复会话及消息
 - `GET /api/ollama/models`：本地模型发现与延迟检测
 - `POST /api/chat`：检索知识与记忆并返回流式回复
-- `POST /api/tts`：使用角色对应的本地 Kokoro 音色生成 WAV
+- `GET /api/tts`：查询本地语音服务状态和可用音色
+- `POST /api/tts`：按角色已保存音色或指定试听音色生成 WAV
 - `PATCH /api/tool-calls/:id`：批准或拒绝待执行的高风险工具调用
 - `GET /api/observability/runs`：查询 Agent 执行轨迹
 - `GET/POST /api/evaluations`：查询或运行角色一致性评测

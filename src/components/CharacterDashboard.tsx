@@ -1,11 +1,11 @@
 'use client';
 
-import { ArrowRight, Bot, Plus, RefreshCw, Trash2, X } from 'lucide-react';
+import { ArrowRight, Bot, Pencil, Play, Plus, RefreshCw, Square, Trash2, X } from 'lucide-react';
 import Link from 'next/link';
-import { FormEvent, useCallback, useEffect, useState } from 'react';
+import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 
 import type { Character, CharacterInput } from '@/domain/character';
-import { VOICE_PROFILES } from '@/domain/voice';
+import { resolveVoiceId, voiceDisplayName, VOICE_PROFILES } from '@/domain/voice';
 
 interface ModelStatus {
   error?: string;
@@ -23,6 +23,7 @@ const initialForm: CharacterInput = {
   model: 'qwen2.5:7b',
   name: '',
   systemPrompt: '你是一个真诚、可靠的角色助手。请保持人设一致，不确定的事实要坦诚说明。',
+  voiceId: 'zf_099',
   voiceProfile: 'neutral',
 };
 
@@ -30,9 +31,13 @@ export function CharacterDashboard() {
   const [characters, setCharacters] = useState<Character[]>([]);
   const [status, setStatus] = useState<ModelStatus>();
   const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState('');
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(initialForm);
   const [error, setError] = useState('');
+  const [voices, setVoices] = useState<string[]>([]);
+  const [previewingVoice, setPreviewingVoice] = useState('');
+  const previewRef = useRef<{ audio: HTMLAudioElement; url: string }>(null);
 
   const loadCharacters = useCallback(async () => {
     const response = await fetch('/api/characters');
@@ -51,33 +56,130 @@ export function CharacterDashboard() {
     }
   }, [form.model]);
 
+  const loadVoices = useCallback(async () => {
+    try {
+      const response = await fetch('/api/tts', { cache: 'no-store' });
+      const data = (await response.json()) as { voices?: string[] };
+      setVoices((data.voices || []).filter((voice) => /^zf_\d{3}$/.test(voice)).sort());
+    } catch {
+      setVoices([]);
+    }
+  }, []);
+
   useEffect(() => {
     // Initial network hydration is intentionally owned by this client dashboard.
     // eslint-disable-next-line react-hooks/set-state-in-effect
     loadCharacters();
     checkModels();
-  }, [checkModels, loadCharacters]);
+    loadVoices();
+  }, [checkModels, loadCharacters, loadVoices]);
+
+  useEffect(() => () => {
+    if (previewRef.current) {
+      previewRef.current.audio.pause();
+      URL.revokeObjectURL(previewRef.current.url);
+    }
+  }, []);
 
   const update = <Key extends keyof CharacterInput>(key: Key, value: CharacterInput[Key]) =>
     setForm((current) => ({ ...current, [key]: value }));
+
+  const stopPreview = () => {
+    if (previewRef.current) {
+      previewRef.current.audio.pause();
+      previewRef.current.audio.removeAttribute('src');
+      URL.revokeObjectURL(previewRef.current.url);
+      previewRef.current = null;
+    }
+    setPreviewingVoice('');
+  };
+
+  const previewVoice = async () => {
+    const voiceId = resolveVoiceId(form.voiceProfile, form.voiceId);
+    if (previewingVoice === voiceId) {
+      stopPreview();
+      return;
+    }
+    stopPreview();
+    setError('');
+    setPreviewingVoice(voiceId);
+    try {
+      const response = await fetch('/api/tts', {
+        body: JSON.stringify({
+          text: form.greeting.trim() || '你好，开拓者。这是我的声线试听。',
+          voiceId,
+        }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({})) as { error?: string };
+        throw new Error(data.error || '声线试听失败');
+      }
+      const url = URL.createObjectURL(await response.blob());
+      const audio = new Audio(url);
+      previewRef.current = { audio, url };
+      const finish = () => {
+        if (previewRef.current?.audio === audio) {
+          URL.revokeObjectURL(url);
+          previewRef.current = null;
+        }
+        setPreviewingVoice('');
+      };
+      audio.onended = finish;
+      audio.onerror = finish;
+      await audio.play();
+    } catch (caught) {
+      stopPreview();
+      setError(caught instanceof Error ? caught.message : '声线试听失败');
+    }
+  };
+
+  const closeForm = () => {
+    stopPreview();
+    setForm({ ...initialForm });
+    setEditingId('');
+    setShowForm(false);
+    setError('');
+  };
+
+  const createCharacter = () => {
+    setForm({ ...initialForm });
+    setEditingId('');
+    setShowForm(true);
+    setError('');
+  };
+
+  const editCharacter = (character: Character) => {
+    const { createdAt: _createdAt, id, updatedAt: _updatedAt, ...input } = character;
+    void _createdAt;
+    void _updatedAt;
+    setForm({
+      ...input,
+      voiceId: resolveVoiceId(input.voiceProfile, input.voiceId),
+    });
+    setEditingId(id);
+    setShowForm(true);
+    setError('');
+    window.scrollTo({ behavior: 'smooth', top: 180 });
+  };
 
   const submit = async (event: FormEvent) => {
     event.preventDefault();
     setSaving(true);
     setError('');
     try {
-      const response = await fetch('/api/characters', {
+      const response = await fetch(editingId ? `/api/characters/${editingId}` : '/api/characters', {
         body: JSON.stringify(form),
         headers: { 'Content-Type': 'application/json' },
-        method: 'POST',
+        method: editingId ? 'PATCH' : 'POST',
       });
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || '创建失败');
-      setForm(initialForm);
-      setShowForm(false);
+      if (!response.ok) throw new Error(data.error || (editingId ? '更新失败' : '创建失败'));
+      closeForm();
       await loadCharacters();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : '创建失败');
+      setError(caught instanceof Error ? caught.message : (editingId ? '更新失败' : '创建失败'));
     } finally {
       setSaving(false);
     }
@@ -101,9 +203,9 @@ export function CharacterDashboard() {
             <RefreshCw size={15} />
           </button>
         </div>
-        <button className="button primary" onClick={() => setShowForm((value) => !value)} type="button">
+        <button className="button primary" onClick={() => (showForm ? closeForm() : createCharacter())} type="button">
           {showForm ? <X size={17} /> : <Plus size={17} />}
-          {showForm ? '取消创建' : '创建角色'}
+          {showForm ? (editingId ? '取消编辑' : '取消创建') : '创建角色'}
         </button>
       </div>
 
@@ -123,7 +225,7 @@ export function CharacterDashboard() {
               </select>
             </div>
             <div className="field wide">
-              <label htmlFor="voiceProfile">AI 合成声线</label>
+              <label htmlFor="voiceProfile">声线风格与语速</label>
               <select
                 id="voiceProfile"
                 className="input"
@@ -134,6 +236,26 @@ export function CharacterDashboard() {
                   <option key={id} value={id}>{profile.label} · {profile.description}</option>
                 ))}
               </select>
+            </div>
+            <div className="field wide">
+              <label htmlFor="voiceId">具体中文女声（可逐个试听）</label>
+              <div className="voice-picker">
+                <select
+                  id="voiceId"
+                  className="input"
+                  onChange={(event) => update('voiceId', event.target.value)}
+                  value={resolveVoiceId(form.voiceProfile, form.voiceId)}
+                >
+                  {(voices.length ? voices : [resolveVoiceId(form.voiceProfile, form.voiceId)]).map((voice) => (
+                    <option key={voice} value={voice}>{voiceDisplayName(voice)} · {voice}</option>
+                  ))}
+                </select>
+                <button className="button" onClick={() => void previewVoice()} type="button">
+                  {previewingVoice ? <Square size={15} /> : <Play size={15} />}
+                  {previewingVoice ? '停止试听' : '试听开场白'}
+                </button>
+              </div>
+              <span className="field-hint">建议所有角色使用同一句开场白对比，选出最接近的音色后保存。</span>
             </div>
             <div className="field wide">
               <label htmlFor="description">一句话介绍</label>
@@ -159,7 +281,7 @@ export function CharacterDashboard() {
           {error && <p className="error">{error}</p>}
           <div className="actions">
             <button className="button primary" disabled={saving} type="submit">
-              <Bot size={17} /> {saving ? '正在创建…' : '保存角色'}
+              <Bot size={17} /> {saving ? (editingId ? '正在保存…' : '正在创建…') : '保存角色'}
             </button>
           </div>
         </form>
@@ -178,11 +300,16 @@ export function CharacterDashboard() {
               <div className="character-overlay">
                 <h2>{character.name}</h2>
                 <p>{character.description || character.model}</p>
-                <span className="card-voice-label">AI 合成 · {VOICE_PROFILES[character.voiceProfile].label}</span>
+                <span className="card-voice-label">
+                  本地合成 · {VOICE_PROFILES[character.voiceProfile].label} · {voiceDisplayName(resolveVoiceId(character.voiceProfile, character.voiceId))}
+                </span>
                 <div className="actions">
                   <Link className="button primary" href={`/chat/${character.id}`}>
                     开始对话 <ArrowRight size={16} />
                   </Link>
+                  <button aria-label={`编辑${character.name}`} className="button" onClick={() => editCharacter(character)} type="button">
+                    <Pencil size={16} />
+                  </button>
                   <button aria-label="删除角色" className="button danger" onClick={() => remove(character.id)} type="button">
                     <Trash2 size={16} />
                   </button>

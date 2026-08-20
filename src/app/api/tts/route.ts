@@ -1,32 +1,54 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { VOICE_PROFILES } from '@/domain/voice';
+import { KOKORO_VOICE_ID_PATTERN, resolveVoiceId, VOICE_PROFILES } from '@/domain/voice';
 import { characterRepository } from '@/server/repositories/characterRepository';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const requestSchema = z.object({
-  characterId: z.string().uuid(),
+  characterId: z.string().uuid().optional(),
   text: z.string().trim().min(1).max(3000),
-});
+  voiceId: z.string().regex(KOKORO_VOICE_ID_PATTERN).optional(),
+}).refine((value) => value.characterId || value.voiceId, '需要角色或语音 ID');
 
 const serviceUrl = process.env.KOKORO_TTS_URL || 'http://127.0.0.1:9890';
+
+export const GET = async () => {
+  try {
+    const response = await fetch(`${serviceUrl}/health`, {
+      cache: 'no-store',
+      signal: AbortSignal.timeout(5_000),
+    });
+    const payload = await response.json();
+    return NextResponse.json(payload, { status: response.status });
+  } catch {
+    return NextResponse.json({ error: '本地语音服务未启动', voices: [] }, { status: 503 });
+  }
+};
 
 export const POST = async (request: Request) => {
   const parsed = requestSchema.safeParse(await request.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ error: '语音请求不合法' }, { status: 400 });
-  const character = characterRepository.findById(parsed.data.characterId);
-  if (!character) return NextResponse.json({ error: '角色不存在' }, { status: 404 });
 
-  const profile = VOICE_PROFILES[character.voiceProfile];
+  let speed = 1;
+  let voiceId = parsed.data.voiceId;
+  if (parsed.data.characterId) {
+    const character = characterRepository.findById(parsed.data.characterId);
+    if (!character) return NextResponse.json({ error: '角色不存在' }, { status: 404 });
+    const profile = VOICE_PROFILES[character.voiceProfile];
+    speed = profile.rate;
+    voiceId ||= resolveVoiceId(character.voiceProfile, character.voiceId);
+  }
+  if (!voiceId) return NextResponse.json({ error: '语音 ID 缺失' }, { status: 400 });
+
   try {
     const response = await fetch(`${serviceUrl}/tts`, {
       body: JSON.stringify({
-        speed: profile.rate,
+        speed,
         text: parsed.data.text,
-        voice: profile.kokoroVoice,
+        voice: voiceId,
       }),
       cache: 'no-store',
       headers: { 'Content-Type': 'application/json' },
@@ -41,7 +63,7 @@ export const POST = async (request: Request) => {
       headers: {
         'Cache-Control': 'no-store',
         'Content-Type': 'audio/wav',
-        'X-Character-Voice': profile.kokoroVoice,
+        'X-Character-Voice': voiceId,
       },
     });
   } catch (error) {
