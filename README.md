@@ -34,6 +34,7 @@ CharacterOS 是一个从零实现、本地优先的角色智能体平台，不�
 - 角色和知识库管理 API
 - Ollama 本地模型发现、健康检查与流式对话
 - Kokoro 本地多说话人语音合成，55 种中文女声可试听并按角色持久化
+- MiniMax H3 原生音画情感演绎：从回复抽取短句，异步生成约 5 秒角色视频和独立立体声音轨
 - 可恢复历史会话的聊天界面
 
 ## 本地运行
@@ -72,6 +73,26 @@ pnpm tts
 
 然后保持该窗口运行，另开一个窗口启动 CharacterOS。点击角色卡片上的编辑按钮，可以用同一句开场白逐个试听 55 种中文女声，并把选中的具体音色保存给该角色。角色回复下方可以手动朗读，顶部可开启自动朗读。声线使用 Kokoro v1.1 中文说话人与中文音素词表；它们不是角色原配录音或声音克隆。[Kokoro-82M-v1.1-zh](https://huggingface.co/hexgrad/Kokoro-82M-v1.1-zh) 模型权重使用 Apache-2.0 许可；模型文件保存在 `data/tts/` 并且不会提交到 Git。
 
+## MiniMax H3 情感演绎（可选）
+
+H3 模式适合需要明显语气、表情和口型的重点短句。它与快速朗读并存：Kokoro 通常几秒内返回完整回复的音频；点击回复下方的“情感演绎”，CharacterOS 会抽取一条不超过 22 个字的对白，通过本机 ComfyUI MiniMax H3 工作流异步生成约 5 秒视频和独立音轨。当前 608×352、20 步配置针对 RTX 5060 8GB 显存优化，单次通常需要约 2 分钟。
+
+默认要求相邻目录存在已经安装好模型和节点的 `ComfyUI_H3`：
+
+```text
+项目/
+├─ CharacterOS/
+└─ ComfyUI_H3/
+```
+
+另开一个 PowerShell 窗口启动 H3 服务：
+
+```powershell
+pnpm h3
+```
+
+服务启动后，角色回复下方会同时显示“快速朗读”和“情感演绎”。H3 使用角色头像作为画面参考，并根据角色保存的声线类型生成不同情绪方向；它属于 AI 生成演绎，不是官方配音、原声录音或对配音演员声音的克隆。可用 `H3_COMFYUI_URL` 修改默认的 `http://127.0.0.1:8188` 服务地址。
+
 ## HTTP API
 
 - `GET/POST /api/characters`：角色列表与创建
@@ -85,6 +106,8 @@ pnpm tts
 - `POST /api/chat`：检索知识与记忆并返回流式回复
 - `GET /api/tts`：查询本地语音服务状态和可用音色
 - `POST /api/tts`：按角色已保存音色或指定试听音色生成 WAV
+- `GET/POST /api/h3`：查询 H3 服务或提交/轮询异步情感演绎任务
+- `GET /api/h3/media`：代理读取本地 H3 生成的视频和独立音轨
 - `PATCH /api/tool-calls/:id`：批准或拒绝待执行的高风险工具调用
 - `GET /api/observability/runs`：查询 Agent 执行轨迹
 - `GET/POST /api/evaluations`：查询或运行角色一致性评测

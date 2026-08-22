@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "h3": "powershell -ExecutionPolicy Bypass -File scripts\\start-h3.ps1",
     "seed": "node scripts/seed-characters.mjs",
     "test": "vitest run",
     "tts": ".venv-tts-native\\Scripts\\python.exe scripts\\kokoro-tts-server.py",

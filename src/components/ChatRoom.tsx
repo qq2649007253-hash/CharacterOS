@@ -1,6 +1,6 @@
 'use client';
 
-import { ArrowLeft, BookOpen, Brain, Check, MessageSquarePlus, Plus, Send, Square, Volume2, VolumeX, Wrench, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, Brain, Check, MessageSquarePlus, Plus, Send, Sparkles, Square, Volume2, VolumeX, Wrench, X } from 'lucide-react';
 import Link from 'next/link';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 
@@ -11,6 +11,15 @@ import type { ToolCallRecord } from '@/domain/tool';
 import { resolveVoiceId, voiceDisplayName, VOICE_PROFILES } from '@/domain/voice';
 
 type Message = Pick<PersistedMessage, 'citationsJson' | 'content' | 'role'>;
+
+type H3Job = {
+  audioUrl?: string;
+  error?: string;
+  line?: string;
+  promptId?: string;
+  status: 'starting' | 'queued' | 'running' | 'completed' | 'failed';
+  videoUrl?: string;
+};
 
 const parseCitations = (value: string): MessageCitation[] => {
   try { return value ? JSON.parse(value) as MessageCitation[] : []; } catch { return []; }
@@ -46,12 +55,19 @@ export function ChatRoom({ character }: { character: Character }) {
   const [processingToolCall, setProcessingToolCall] = useState('');
   const [autoSpeak, setAutoSpeak] = useState(false);
   const [speakingMessageIndex, setSpeakingMessageIndex] = useState<number | null>(null);
+  const [h3Jobs, setH3Jobs] = useState<Record<number, H3Job>>({});
   const abortRef = useRef<AbortController>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const initializedRef = useRef(false);
   const speechRequestRef = useRef(0);
   const speechAbortRef = useRef<AbortController>(null);
   const audioRef = useRef<{ audio: HTMLAudioElement; url: string }>(null);
+  const h3PollersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
+
+  const clearH3Pollers = () => {
+    h3PollersRef.current.forEach((timer) => clearTimeout(timer));
+    h3PollersRef.current.clear();
+  };
 
   const stopSpeaking = () => {
     speechRequestRef.current += 1;
@@ -127,8 +143,70 @@ export function ChatRoom({ character }: { character: Character }) {
     }
   };
 
+  const pollH3Performance = (promptId: string, messageIndex: number) => {
+    const poll = async () => {
+      try {
+        const response = await fetch(`/api/h3?promptId=${encodeURIComponent(promptId)}`, { cache: 'no-store' });
+        const payload = await response.json().catch(() => ({})) as H3Job;
+        if (!response.ok) throw new Error(payload.error || '读取 H3 生成进度失败');
+        setH3Jobs((items) => ({
+          ...items,
+          [messageIndex]: { ...items[messageIndex], ...payload, promptId },
+        }));
+        if (payload.status === 'queued' || payload.status === 'running') {
+          const timer = setTimeout(() => void poll(), 4_000);
+          h3PollersRef.current.set(messageIndex, timer);
+        } else {
+          h3PollersRef.current.delete(messageIndex);
+        }
+      } catch (caught) {
+        h3PollersRef.current.delete(messageIndex);
+        setH3Jobs((items) => ({
+          ...items,
+          [messageIndex]: {
+            ...items[messageIndex],
+            error: caught instanceof Error ? caught.message : 'H3 演绎失败',
+            promptId,
+            status: 'failed',
+          },
+        }));
+      }
+    };
+    const previous = h3PollersRef.current.get(messageIndex);
+    if (previous) clearTimeout(previous);
+    void poll();
+  };
+
+  const startH3Performance = async (content: string, messageIndex: number) => {
+    const previous = h3PollersRef.current.get(messageIndex);
+    if (previous) clearTimeout(previous);
+    setError('');
+    setH3Jobs((items) => ({ ...items, [messageIndex]: { status: 'starting' } }));
+    try {
+      const response = await fetch('/api/h3', {
+        body: JSON.stringify({ characterId: character.id, text: content }),
+        headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+      });
+      const payload = await response.json().catch(() => ({})) as H3Job;
+      if (!response.ok || !payload.promptId) throw new Error(payload.error || 'H3 任务提交失败');
+      setH3Jobs((items) => ({ ...items, [messageIndex]: payload }));
+      pollH3Performance(payload.promptId, messageIndex);
+    } catch (caught) {
+      setH3Jobs((items) => ({
+        ...items,
+        [messageIndex]: {
+          error: caught instanceof Error ? caught.message : 'H3 演绎失败',
+          status: 'failed',
+        },
+      }));
+    }
+  };
+
   const loadConversation = async (id: string) => {
     stopSpeaking();
+    clearH3Pollers();
+    setH3Jobs({});
     setRestoring(true);
     const response = await fetch(`/api/conversations/${id}`, { cache: 'no-store' });
     if (!response.ok) throw new Error('恢复会话失败');
@@ -229,6 +307,8 @@ export function ChatRoom({ character }: { character: Character }) {
   }, [messages]);
 
   useEffect(() => () => {
+    h3PollersRef.current.forEach((timer) => clearTimeout(timer));
+    h3PollersRef.current.clear();
     speechRequestRef.current += 1;
     speechAbortRef.current?.abort();
     if (audioRef.current) {
@@ -416,8 +496,11 @@ export function ChatRoom({ character }: { character: Character }) {
         <section className="chat-panel">
           <div className="messages">
             {restoring ? <div className="message assistant">正在恢复会话…</div> : null}
-            {messages.map((message, index) => (
-              <div className={`message ${message.role}`} key={`${message.role}-${index}`}>
+            {messages.map((message, index) => {
+              const h3Job = h3Jobs[index];
+              const h3Busy = h3Job?.status === 'starting' || h3Job?.status === 'queued' || h3Job?.status === 'running';
+              return (
+                <div className={`message ${message.role}`} key={`${message.role}-${index}`}>
                 <div className="message-content">{message.content || (loading && index === messages.length - 1 ? '思考中…' : '')}</div>
                 {parseCitations(message.citationsJson).length ? (
                   <div className="message-citations">
@@ -427,19 +510,51 @@ export function ChatRoom({ character }: { character: Character }) {
                   </div>
                 ) : null}
                 {message.role === 'assistant' && message.content && !(loading && index === messages.length - 1) ? (
-                  <button
-                    aria-label={speakingMessageIndex === index ? '停止朗读' : '朗读角色回复'}
-                    className={`message-voice ${speakingMessageIndex === index ? 'active' : ''}`}
-                    onClick={() => void speakMessage(message.content, index)}
-                    title={speakingMessageIndex === index ? '停止朗读' : `使用“${voiceProfile.label}”本地声线朗读`}
-                    type="button"
-                  >
-                    {speakingMessageIndex === index ? <VolumeX size={14} /> : <Volume2 size={14} />}
-                    {speakingMessageIndex === index ? '停止' : '朗读'}
-                  </button>
+                  <div className="message-actions">
+                    <button
+                      aria-label={speakingMessageIndex === index ? '停止朗读' : '朗读角色回复'}
+                      className={`message-voice ${speakingMessageIndex === index ? 'active' : ''}`}
+                      onClick={() => void speakMessage(message.content, index)}
+                      title={speakingMessageIndex === index ? '停止朗读' : `使用“${voiceProfile.label}”本地声线快速朗读`}
+                      type="button"
+                    >
+                      {speakingMessageIndex === index ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                      {speakingMessageIndex === index ? '停止' : '快速朗读'}
+                    </button>
+                    <button
+                      className={`message-voice h3-trigger ${h3Busy ? 'active' : ''}`}
+                      disabled={h3Busy}
+                      onClick={() => void startH3Performance(message.content, index)}
+                      title="使用 MiniMax H3 生成带原生情感音轨的约 5 秒角色演绎"
+                      type="button"
+                    >
+                      <Sparkles size={14} />
+                      {h3Busy ? '演绎中…' : h3Job?.status === 'completed' ? '重新演绎' : '情感演绎'}
+                    </button>
+                  </div>
                 ) : null}
-              </div>
-            ))}
+                {message.role === 'assistant' && h3Job ? (
+                  <div className={`h3-performance ${h3Job.status}`}>
+                    {h3Job.line ? <p>演绎对白：{h3Job.line}</p> : null}
+                    {h3Job.status === 'starting' ? <span>正在准备角色图片和 H3 工作流…</span> : null}
+                    {h3Job.status === 'queued' ? <span>已进入 H3 队列，生成通常需要约 2 分钟。</span> : null}
+                    {h3Job.status === 'running' ? <span>H3 正在生成口型、动作和情感音轨，请稍候…</span> : null}
+                    {h3Job.status === 'failed' ? <span className="error">{h3Job.error || 'H3 演绎失败'}</span> : null}
+                    {h3Job.status === 'completed' && h3Job.videoUrl && h3Job.audioUrl ? (
+                      <div className="h3-media">
+                        <video controls playsInline poster={character.avatarUrl || character.coverUrl} preload="metadata" src={h3Job.videoUrl} />
+                        <label>
+                          <span>独立情感音轨</span>
+                          <audio controls preload="metadata" src={h3Job.audioUrl} />
+                        </label>
+                        <small>AI 情感演绎，并非角色官方配音或原声克隆。</small>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                </div>
+              );
+            })}
             {toolCalls.map((toolCall) => {
               let arguments_: Record<string, unknown> = {};
               try { arguments_ = JSON.parse(toolCall.argumentsJson) as Record<string, unknown>; } catch {}
