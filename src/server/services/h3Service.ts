@@ -110,8 +110,8 @@ const buildWorkflow = ({ image, line, character }: { image: string; line: string
     inputs: {
       clip: ['6', 0],
       first_frame: ['1', 0],
-      height: 352,
-      length: 124,
+      height: 288,
+      length: 73,
       prompt: buildH3PerformancePrompt({
         characterDescription: character.description,
         characterName: character.name,
@@ -119,24 +119,18 @@ const buildWorkflow = ({ image, line, character }: { image: string; line: string
         voiceProfile: character.voiceProfile,
       }),
       vae: ['7', 0],
-      width: 608,
+      width: 512,
     },
   },
   '10': { class_type: 'RandomNoise', inputs: { noise_seed: Math.floor(Math.random() * 1_000_000_000_000_000) } },
-  '11': { class_type: 'BasicScheduler', inputs: { denoise: 1, model: ['5', 0], scheduler: 'simple', steps: 20 } },
+  '11': { class_type: 'BasicScheduler', inputs: { denoise: 1, model: ['5', 0], scheduler: 'simple', steps: 12 } },
   '12': { class_type: 'KSamplerSelect', inputs: { sampler_name: 'res_multistep' } },
   '13': { class_type: 'BasicGuider', inputs: { conditioning: ['9', 0], model: ['5', 0] } },
   '14': {
     class_type: 'SamplerCustomAdvanced',
     inputs: { guider: ['13', 0], latent_image: ['9', 1], noise: ['10', 0], sampler: ['12', 0], sigmas: ['11', 0] },
   },
-  '15': { class_type: 'VAEDecode', inputs: { samples: ['14', 0], vae: ['7', 0] } },
   '16': { class_type: 'VAEDecodeAudio', inputs: { samples: ['14', 0], vae: ['8', 0] } },
-  '17': { class_type: 'CreateVideo', inputs: { audio: ['16', 0], bit_depth: 8, fps: 24, images: ['15', 0] } },
-  '18': {
-    class_type: 'SaveVideo',
-    inputs: { codec: 'auto', filename_prefix: `CharacterOS/H3_${character.name}_${Date.now()}`, format: 'auto', video: ['17', 0] },
-  },
   '19': {
     class_type: 'SaveAudio',
     inputs: { audio: ['16', 0], filename_prefix: `CharacterOS/H3_${character.name}_${Date.now()}_audio` },
@@ -169,10 +163,9 @@ export const h3Service = {
       if (executionError || entry.status?.status_str === 'error') {
         return { error: executionError || 'H3 工作流执行失败', status: 'failed' as const };
       }
-      const video = entry.outputs?.['18']?.images?.[0];
       const audio = entry.outputs?.['19']?.audio?.[0];
-      if (video && audio) return { audio, status: 'completed' as const, video };
-      if (entry.status?.completed) return { error: 'H3 已结束，但没有生成完整的视频和音频', status: 'failed' as const };
+      if (audio) return { audio, status: 'completed' as const };
+      if (entry.status?.completed) return { error: 'H3 已结束，但没有生成音频', status: 'failed' as const };
       return { status: 'running' as const };
     }
 

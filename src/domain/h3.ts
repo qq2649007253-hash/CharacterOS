@@ -1,6 +1,6 @@
 import type { VoiceProfileId } from './voice';
 
-const MAX_PERFORMANCE_CHARACTERS = 22;
+const MAX_PERFORMANCE_CHARACTERS = 16;
 
 const removeStageDirections = (value: string) => value
   .replace(/```[\s\S]*?```/g, ' ')

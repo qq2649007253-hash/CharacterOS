@@ -31,7 +31,6 @@ export const GET = async (request: Request) => {
     return NextResponse.json({
       audioUrl: mediaUrl(result.audio),
       status: result.status,
-      videoUrl: mediaUrl(result.video),
     });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'H3 服务不可用' }, { status: 502 });
@@ -53,4 +52,3 @@ export const POST = async (request: Request) => {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'H3 任务提交失败' }, { status: 502 });
   }
 };
-
