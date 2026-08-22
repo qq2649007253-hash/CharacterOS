@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 
 import type { Character } from '@/domain/character';
-import { buildH3PerformancePrompt } from '@/domain/h3';
+import { buildH3PerformancePrompt, h3FrameLengthForLine } from '@/domain/h3';
 
 const serviceUrl = (process.env.H3_COMFYUI_URL || 'http://127.0.0.1:8188').replace(/\/$/, '');
 
@@ -65,77 +65,122 @@ const uploadReferenceImage = async (imageUrl: string, characterId: string) => {
   return payload.subfolder ? `${payload.subfolder}/${payload.name}` : payload.name;
 };
 
-const buildWorkflow = ({ image, line, character }: { image: string; line: string; character: Character }) => ({
-  '1': { class_type: 'LoadImage', inputs: { image } },
-  '2': { class_type: 'UNETLoader', inputs: { unet_name: models.model, weight_dtype: 'default' } },
-  '3': { class_type: 'MiniMaxH3SigmaShift', inputs: { model: ['2', 0], shift_audio: 3, shift_video: 12 } },
-  '4': {
-    class_type: 'SpectrumApplyMiniMaxH3',
-    inputs: {
-      anchor_residual_feedback: false,
-      audio_blend_weight: 0,
-      blend_weight: 0.5,
-      bootstrap_first_forecast: true,
-      debug: false,
-      degree: 1,
-      enabled: true,
-      flex_window: 0.75,
-      history_storage: 'system_ram',
-      max_history: 8,
-      model: ['3', 0],
-      offline_archive_storage: 'system_ram',
-      offline_smoothing_replay: true,
-      ridge_lambda: 0.1,
-      selective_rollback_correction: false,
-      tail_actual_steps: 1,
-      warmup_steps: 1,
-      window_size: 2,
+type WorkflowNode = { class_type: string; inputs: Record<string, unknown> };
+
+const buildWorkflow = ({ image, lines, character }: { image: string; lines: string[]; character: Character }) => {
+  const workflow: Record<string, WorkflowNode> = {
+    '1': { class_type: 'LoadImage', inputs: { image } },
+    '2': { class_type: 'UNETLoader', inputs: { unet_name: models.model, weight_dtype: 'default' } },
+    '3': { class_type: 'MiniMaxH3SigmaShift', inputs: { model: ['2', 0], shift_audio: 3, shift_video: 12 } },
+    '4': {
+      class_type: 'SpectrumApplyMiniMaxH3',
+      inputs: {
+        anchor_residual_feedback: false,
+        audio_blend_weight: 0,
+        blend_weight: 0.5,
+        bootstrap_first_forecast: true,
+        debug: false,
+        degree: 1,
+        enabled: true,
+        flex_window: 0.75,
+        history_storage: 'system_ram',
+        max_history: 8,
+        model: ['3', 0],
+        offline_archive_storage: 'system_ram',
+        offline_smoothing_replay: true,
+        ridge_lambda: 0.1,
+        selective_rollback_correction: false,
+        tail_actual_steps: 1,
+        warmup_steps: 1,
+        window_size: 2,
+      },
     },
-  },
-  '5': { class_type: 'ModelAttentionBackend', inputs: { attention: 'comfy kitchen attention', model: ['4', 0] } },
-  '6': {
-    class_type: 'ClipProjLoader',
-    inputs: {
-      clip_name: models.clip,
-      device: 'cuda:0',
-      mode: 'resident',
-      projection: models.clipProjection,
-      type: 'auto',
+    '5': { class_type: 'ModelAttentionBackend', inputs: { attention: 'comfy kitchen attention', model: ['4', 0] } },
+    '6': {
+      class_type: 'ClipProjLoader',
+      inputs: {
+        clip_name: models.clip,
+        device: 'cuda:0',
+        mode: 'resident',
+        projection: models.clipProjection,
+        type: 'auto',
+      },
     },
-  },
-  '7': { class_type: 'VAELoader', inputs: { vae_name: models.videoVae } },
-  '8': { class_type: 'VAELoader', inputs: { vae_name: models.audioVae } },
-  '9': {
-    class_type: 'MiniMaxH3ImageToVideo',
-    inputs: {
-      clip: ['6', 0],
-      first_frame: ['1', 0],
-      height: 288,
-      length: 73,
-      prompt: buildH3PerformancePrompt({
-        characterDescription: character.description,
-        characterName: character.name,
-        line,
-        voiceProfile: character.voiceProfile,
-      }),
-      vae: ['7', 0],
-      width: 512,
-    },
-  },
-  '10': { class_type: 'RandomNoise', inputs: { noise_seed: Math.floor(Math.random() * 1_000_000_000_000_000) } },
-  '11': { class_type: 'BasicScheduler', inputs: { denoise: 1, model: ['5', 0], scheduler: 'simple', steps: 12 } },
-  '12': { class_type: 'KSamplerSelect', inputs: { sampler_name: 'res_multistep' } },
-  '13': { class_type: 'BasicGuider', inputs: { conditioning: ['9', 0], model: ['5', 0] } },
-  '14': {
-    class_type: 'SamplerCustomAdvanced',
-    inputs: { guider: ['13', 0], latent_image: ['9', 1], noise: ['10', 0], sampler: ['12', 0], sigmas: ['11', 0] },
-  },
-  '16': { class_type: 'VAEDecodeAudio', inputs: { samples: ['14', 0], vae: ['8', 0] } },
-  '19': {
+    '7': { class_type: 'VAELoader', inputs: { vae_name: models.videoVae } },
+    '8': { class_type: 'VAELoader', inputs: { vae_name: models.audioVae } },
+  };
+
+  let combinedAudio: [string, number] | undefined;
+  lines.forEach((line, index) => {
+    const base = 20 + index * 10;
+    const conditioningId = String(base);
+    const noiseId = String(base + 1);
+    const schedulerId = String(base + 2);
+    const samplerId = String(base + 3);
+    const guiderId = String(base + 4);
+    const sampleId = String(base + 5);
+    const decodeId = String(base + 6);
+    workflow[conditioningId] = {
+      class_type: 'MiniMaxH3ImageToVideo',
+      inputs: {
+        clip: ['6', 0],
+        first_frame: ['1', 0],
+        height: 192,
+        length: h3FrameLengthForLine(line),
+        prompt: buildH3PerformancePrompt({
+          characterDescription: character.description,
+          characterName: character.name,
+          line,
+          voiceProfile: character.voiceProfile,
+        }),
+        vae: ['7', 0],
+        width: 320,
+      },
+    };
+    workflow[noiseId] = {
+      class_type: 'RandomNoise',
+      inputs: { noise_seed: Math.floor(Math.random() * 1_000_000_000_000_000) },
+    };
+    workflow[schedulerId] = {
+      class_type: 'BasicScheduler',
+      inputs: { denoise: 1, model: ['5', 0], scheduler: 'simple', steps: 16 },
+    };
+    workflow[samplerId] = { class_type: 'KSamplerSelect', inputs: { sampler_name: 'res_multistep' } };
+    workflow[guiderId] = {
+      class_type: 'BasicGuider',
+      inputs: { conditioning: [conditioningId, 0], model: ['5', 0] },
+    };
+    workflow[sampleId] = {
+      class_type: 'SamplerCustomAdvanced',
+      inputs: {
+        guider: [guiderId, 0],
+        latent_image: [conditioningId, 1],
+        noise: [noiseId, 0],
+        sampler: [samplerId, 0],
+        sigmas: [schedulerId, 0],
+      },
+    };
+    workflow[decodeId] = { class_type: 'VAEDecodeAudio', inputs: { samples: [sampleId, 0], vae: ['8', 0] } };
+    const decodedAudio: [string, number] = [decodeId, 0];
+    if (!combinedAudio) {
+      combinedAudio = decodedAudio;
+    } else {
+      const concatId = String(5_000 + index);
+      workflow[concatId] = {
+        class_type: 'AudioConcat',
+        inputs: { audio1: combinedAudio, audio2: decodedAudio, direction: 'after' },
+      };
+      combinedAudio = [concatId, 0];
+    }
+  });
+
+  if (!combinedAudio) throw new Error('没有可生成的 H3 对白');
+  workflow['19'] = {
     class_type: 'SaveAudio',
-    inputs: { audio: ['16', 0], filename_prefix: `CharacterOS/H3_${character.name}_${Date.now()}_audio` },
-  },
-});
+    inputs: { audio: combinedAudio, filename_prefix: `CharacterOS/H3_${character.name}_${Date.now()}_audio` },
+  };
+  return workflow;
+};
 
 const findExecutionError = (entry: ComfyHistoryEntry) => {
   const error = entry.status?.messages?.find(([type]) => type === 'execution_error')?.[1];
@@ -179,14 +224,14 @@ export const h3Service = {
     return { error: 'H3 任务不存在或已被服务清理', status: 'failed' as const };
   },
 
-  async submit(character: Character, line: string) {
+  async submit(character: Character, lines: string[]) {
     await this.health();
     const imageUrl = character.avatarUrl || character.coverUrl;
     if (!imageUrl) throw new Error('请先在角色设置中添加头像或立绘');
     const image = await uploadReferenceImage(imageUrl, character.id);
     const clientId = randomUUID();
     const response = await fetchComfy('/prompt', {
-      body: JSON.stringify({ client_id: clientId, prompt: buildWorkflow({ character, image, line }) }),
+      body: JSON.stringify({ client_id: clientId, prompt: buildWorkflow({ character, image, lines }) }),
       headers: { 'Content-Type': 'application/json' },
       method: 'POST',
     }, 30_000);

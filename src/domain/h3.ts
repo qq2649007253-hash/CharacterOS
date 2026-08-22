@@ -1,6 +1,7 @@
 import type { VoiceProfileId } from './voice';
 
 const MAX_PERFORMANCE_CHARACTERS = 16;
+const MAX_PERFORMANCE_SEGMENT_CHARACTERS = 36;
 
 const removeStageDirections = (value: string) => value
   .replace(/```[\s\S]*?```/g, ' ')
@@ -27,6 +28,42 @@ export const selectH3PerformanceLine = (reply: string) => {
   const clipped = clipByCodePoint(candidate.trim(), MAX_PERFORMANCE_CHARACTERS).replace(/[，,；;：:\s]+$/u, '');
   if (!clipped) return '';
   return /[。！？!?~～]$/u.test(clipped) ? clipped : `${clipped}。`;
+};
+
+const codePointLength = (value: string) => Array.from(value).length;
+
+const splitLongSentence = (sentence: string) => {
+  const chunks: string[] = [];
+  let remaining = sentence.trim();
+  while (codePointLength(remaining) > MAX_PERFORMANCE_SEGMENT_CHARACTERS) {
+    const window = Array.from(remaining).slice(0, MAX_PERFORMANCE_SEGMENT_CHARACTERS).join('');
+    const breakpoints = Array.from(window).reduce<number[]>((positions, character, index) => {
+      if (/[，,；;：:、]/u.test(character)) positions.push(index + 1);
+      return positions;
+    }, []);
+    const naturalBreak = breakpoints.filter((position) => position >= 12).at(-1);
+    const length = naturalBreak || MAX_PERFORMANCE_SEGMENT_CHARACTERS;
+    let chunk = Array.from(remaining).slice(0, length).join('').trim();
+    remaining = Array.from(remaining).slice(length).join('').trim();
+    if (!/[。！？!?~～，,；;：:]$/u.test(chunk)) chunk += '，';
+    chunks.push(chunk);
+  }
+  if (remaining) chunks.push(remaining);
+  return chunks;
+};
+
+export const splitH3PerformanceLines = (reply: string) => {
+  const cleaned = removeStageDirections(reply);
+  if (!cleaned) return [];
+  const sentences = cleaned.match(/[^。！？!?~～]+[。！？!?~～]?/gu) || [cleaned];
+  return sentences.flatMap(splitLongSentence).filter(Boolean);
+};
+
+export const h3FrameLengthForLine = (line: string) => {
+  const spokenCharacters = codePointLength(line.replace(/[\s，,。！？!?~～；;：:、“”‘’"']/gu, ''));
+  const seconds = Math.min(15, Math.max(5, Math.ceil(spokenCharacters / 3.2) + 1));
+  const rawFrames = Math.round(seconds * 24);
+  return rawFrames + ((5 - (rawFrames % 17) + 17) % 17);
 };
 
 const VOICE_DIRECTIONS: Record<VoiceProfileId, string> = {

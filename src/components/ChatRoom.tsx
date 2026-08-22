@@ -16,6 +16,7 @@ type H3Job = {
   error?: string;
   line?: string;
   promptId?: string;
+  segmentCount?: number;
   status: 'starting' | 'queued' | 'running' | 'completed' | 'failed';
 };
 
@@ -415,10 +416,10 @@ export function ChatRoom({ character }: { character: Character }) {
                 ) : null}
                 {message.role === 'assistant' && h3Job ? (
                   <div className={`h3-performance ${h3Job.status}`}>
-                    {h3Job.line ? <p>演绎对白：{h3Job.line}</p> : null}
+                    {h3Job.line ? <p>完整回复 · {h3Job.segmentCount || 1} 段 · {Array.from(h3Job.line).length} 字</p> : null}
                     {h3Job.status === 'starting' ? <span>正在准备 H3 情感语音工作流…</span> : null}
-                    {h3Job.status === 'queued' ? <span>已进入 H3 队列，优化模式通常需要约 30–60 秒。</span> : null}
-                    {h3Job.status === 'running' ? <span>H3 正在生成情感音轨，请稍候…</span> : null}
+                    {h3Job.status === 'queued' ? <span>已进入 H3 队列，将按完整回复长度生成。</span> : null}
+                    {h3Job.status === 'running' ? <span>H3 正在逐段生成并合并完整情感音轨，请稍候…</span> : null}
                     {h3Job.status === 'failed' ? <span className="error">{h3Job.error || 'H3 演绎失败'}</span> : null}
                     {h3Job.status === 'completed' && h3Job.audioUrl ? (
                       <div className="h3-media">

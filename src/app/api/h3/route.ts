@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 
-import { selectH3PerformanceLine } from '@/domain/h3';
+import { splitH3PerformanceLines } from '@/domain/h3';
 import { characterRepository } from '@/server/repositories/characterRepository';
 import { h3Service } from '@/server/services/h3Service';
 
@@ -42,12 +42,17 @@ export const POST = async (request: Request) => {
   if (!parsed.success) return NextResponse.json({ error: 'H3 演绎请求不合法' }, { status: 400 });
   const character = characterRepository.findById(parsed.data.characterId);
   if (!character) return NextResponse.json({ error: '角色不存在' }, { status: 404 });
-  const line = selectH3PerformanceLine(parsed.data.text);
-  if (!line) return NextResponse.json({ error: '这条回复没有适合演绎的对白' }, { status: 400 });
+  const lines = splitH3PerformanceLines(parsed.data.text);
+  if (!lines.length) return NextResponse.json({ error: '这条回复没有适合演绎的对白' }, { status: 400 });
 
   try {
-    const job = await h3Service.submit(character, line);
-    return NextResponse.json({ line, promptId: job.promptId, status: 'queued' }, { status: 202 });
+    const job = await h3Service.submit(character, lines);
+    return NextResponse.json({
+      line: lines.join(''),
+      promptId: job.promptId,
+      segmentCount: lines.length,
+      status: 'queued',
+    }, { status: 202 });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'H3 任务提交失败' }, { status: 502 });
   }
