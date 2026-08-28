@@ -1,0 +1,32 @@
+appId: com.characteros.desktop
+productName: CharacterOS
+copyright: Copyright © 2026 CharacterOS Contributors
+directories:
+  buildResources: ../build
+  output: ../../dist-desktop
+asar: true
+electronDist: ../../node_modules/electron/dist
+electronVersion: 44.0.0
+npmRebuild: false
+files:
+  - main.cjs
+  - package.json
+extraResources:
+  - from: ../runtime/app-server
+    to: app-server
+  - from: ../runtime/node.exe
+    to: runtime/node.exe
+win:
+  artifactName: CharacterOS-Setup-${version}.${ext}
+  icon: icon.ico
+  target:
+    - target: nsis
+      arch:
+        - x64
+nsis:
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  oneClick: false
+  perMachine: false
+  shortcutName: CharacterOS

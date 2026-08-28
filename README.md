@@ -47,6 +47,24 @@ pnpm exec next dev --turbo -p 3100
 
 访问 `http://localhost:3100`。Ollama 默认连接 `http://127.0.0.1:11434`。
 
+## Windows 桌面端
+
+CharacterOS 提供 Electron 桌面外壳。桌面版会自动选择本地端口、启动内置的 Next.js 服务并打开独立窗口，不需要用户手动运行网页服务。首次启动会自动初始化默认角色；聊天、知识库和长期记忆保存在 Windows 用户数据目录，应用升级不会覆盖个人数据。Ollama 和可选的 MiniMax H3 仍通过本机服务连接。
+
+开发模式启动桌面窗口：
+
+```powershell
+pnpm desktop:dev
+```
+
+生成 Windows x64 安装包：
+
+```powershell
+pnpm desktop:build
+```
+
+安装包输出到 `dist-desktop/CharacterOS-Setup-0.1.0.exe`。桌面包内置与构建时一致的 Node.js 运行时，所以目标电脑不需要另行安装 Node.js；使用对话功能前只需确保 Ollama 正在运行并已安装角色配置所选模型。
+
 启用向量检索需要安装 Embedding 模型：
 
 ```bash
@@ -75,7 +93,7 @@ pnpm tts
 
 ## MiniMax H3 情感演绎（可选）
 
-点击回复下方的“生成情感语音”，CharacterOS 会按标点把完整回复拆成自然对白段，根据每段字数在 5–15 秒之间动态分配时长，逐段生成后在 ComfyUI 内合并为一个独立音轨，因此不会再把长回复强塞进 3 秒或截断后文。隐藏画面采用 320×192、16 步配置，并跳过视频解码与保存；当前配置针对 RTX 5060 8GB 显存优化。回复越长，生成时间也会相应增加。
+点击回复下方的“生成情感语音”，CharacterOS 会按标点把完整回复拆成自然对白段，根据每段字数在 5–15 秒之间动态分配时长，逐段生成后在 ComfyUI 内合并为一个独立音轨，因此不会再把长回复强塞进 3 秒或截断后文。隐藏画面采用 320×192、16 步配置，并跳过视频解码与保存；最终音频输出为 320 kbps MP3，以避免部分 Edge/Windows 音频链播放 32 kHz FLAC 时出现杂音。当前配置针对 RTX 5060 8GB 显存优化，回复越长，生成时间也会相应增加。
 
 默认要求相邻目录存在已经安装好模型和节点的 `ComfyUI_H3`：
 

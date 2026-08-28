@@ -5,7 +5,9 @@ import path from 'node:path';
 
 import * as schema from './schema';
 
-const dataDirectory = path.resolve(process.cwd(), 'data');
+const dataDirectory = process.env.CHARACTEROS_DATA_DIR
+  ? path.resolve(process.env.CHARACTEROS_DATA_DIR)
+  : path.resolve(process.cwd(), 'data');
 mkdirSync(dataDirectory, { recursive: true });
 
 const sqlite = new Database(path.join(dataDirectory, 'characteros.db'));

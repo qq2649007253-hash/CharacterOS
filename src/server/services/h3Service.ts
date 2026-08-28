@@ -176,8 +176,15 @@ const buildWorkflow = ({ image, lines, character }: { image: string; lines: stri
 
   if (!combinedAudio) throw new Error('没有可生成的 H3 对白');
   workflow['19'] = {
-    class_type: 'SaveAudio',
-    inputs: { audio: combinedAudio, filename_prefix: `CharacterOS/H3_${character.name}_${Date.now()}_audio` },
+    class_type: 'SaveAudioAdvanced',
+    inputs: {
+      audio: combinedAudio,
+      filename_prefix: `CharacterOS/H3_${character.name}_${Date.now()}_audio`,
+      format: {
+        format: 'mp3',
+        quality: '320k',
+      },
+    },
   };
   return workflow;
 };
