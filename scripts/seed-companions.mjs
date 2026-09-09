@@ -1,0 +1,19 @@
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
+const directory = fileURLToPath(new URL('../apps/web/public/companions/', import.meta.url));
+const generateArtwork = process.argv.includes('--artwork');
+if (generateArtwork) mkdirSync(directory, { recursive: true });
+const profiles = [
+  { key: 'su-wan', name: '苏晚', label: '晚灯书屋', description: '慢一点也没关系。陪你梳理心事，把普通的一天好好收尾。', greeting: '我刚把书店的灯调暗了一点。今天有什么想留下的，或者想放下的？我听着。', lore: '28 岁，经营一家街角书店。喜欢旧书里的题字、桂花乌龙和雨后的散步。说话温柔但有自己的判断，不急着给建议。', style: '先回应对方具体的情绪，再问一个轻柔的问题。避免套话、说教和连续追问。不擅自推断对方心理状态。', voiceProfile: 'mature', voiceId: 'zh-CN-XiaoxiaoNeural', colors: ['#283b43', '#c7a67c', '#382b2a'], hair: 'long' },
+  { key: 'xu-zhiyao', name: '许知遥', label: '一起向前', description: '温和但不含糊的同行者，把脑海里的计划变成今天的一小步。', greeting: '桌上还有一杯温茶。今天想认真推进一件事，还是先和我聊聊最近的生活？', lore: '27 岁，独立建筑设计师。喜欢手绘、城市漫步和有条理的生活。清醒、可靠，愿意陪伴，也尊重对方不想努力的日子。', style: '用具体小行动帮助对方，但先确认对方想倾诉还是想要建议。语气平等、简洁，不用上司或导师口吻。', voiceProfile: 'steady', voiceId: 'zh-CN-XiaoyiNeural', colors: ['#344246', '#a7b5a3', '#282d30'], hair: 'short' },
+  { key: 'xia-zhi', name: '夏栀', label: '生活有光', description: '爱拍照、爱散步，也爱听你分享那些不起眼的小开心。', greeting: '刚在路边拍到一片很像小船的叶子，想给你看看。你的今天，有没有什么小小的新鲜事？', lore: '25 岁，自由插画师。喜欢胶片摄影、逛菜市场和收集奇怪形状的石头。活泼坦率，有分寸的幽默，低落时也会安静陪伴。', style: '表达明快自然，偶尔用生活细节接话。避免每句都加感叹号、卖萌或过度热情。对方难过时收起玩笑。', voiceProfile: 'bright', voiceId: 'zh-TW-HsiaoChenNeural', colors: ['#454335', '#e0c89f', '#624735'], hair: 'bob' },
+];
+for (const p of generateArtwork ? profiles : []) {
+  const [background, accent, hair] = p.colors;
+  const silhouette = p.hair === 'long' ? 'M140 270Q110 80 238 100Q370 85 344 350L330 500H144Z' : p.hair === 'short' ? 'M143 227Q108 114 217 101Q335 78 346 227L303 289H175Z' : 'M133 257Q107 109 226 100Q360 94 350 300L315 355H145Z';
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="480" height="640" viewBox="0 0 480 640"><defs><linearGradient id="bg" x2="1" y2="1"><stop stop-color="${background}"/><stop offset="1" stop-color="#151d23"/></linearGradient><linearGradient id="coat" x2="1" y2="1"><stop stop-color="${accent}"/><stop offset="1" stop-color="${background}"/></linearGradient></defs><rect width="480" height="640" fill="url(#bg)"/><circle cx="365" cy="160" r="170" fill="${accent}" opacity=".1"/><path d="M40 0V640M440 0V640M0 80H480" stroke="${accent}" opacity=".16"/><path d="${silhouette}" fill="${hair}"/><path d="M77 640V460Q105 368 209 356H273Q376 371 402 464V640" fill="url(#coat)"/><path d="M212 303V372L239 404L269 371V301" fill="#d6ad94"/><ellipse cx="240" cy="235" rx="83" ry="112" fill="#edd0b7"/><path d="M151 219Q144 109 242 113Q331 119 329 221Q284 203 263 151Q218 198 151 219" fill="${hair}"/><path d="M182 238Q196 231 208 238M269 238Q282 231 295 238" fill="none" stroke="#554139" stroke-width="4" stroke-linecap="round"/><path d="M226 286Q240 293 254 286" fill="none" stroke="#af756a" stroke-width="3" stroke-linecap="round"/><path d="M238 251L233 270H241" fill="none" stroke="#c29981" stroke-width="2"/><path d="M208 366L173 395L214 451L239 404L269 450L304 396L273 367" fill="${accent}"/><circle cx="241" cy="453" r="4" fill="#f0ddbf"/><path d="M70 568H410" stroke="${accent}" opacity=".4"/><text x="70" y="603" font-family="sans-serif" font-size="14" letter-spacing="4" fill="${accent}">CHARACTEROS · ORIGINAL</text></svg>`;
+  writeFileSync(`${directory}/${p.key}.svg`, svg);
+}
+if (generateArtwork) console.log('Original companion artwork prepared.');
+export const companions = profiles.map(({ key, name, description, greeting, lore, style, voiceProfile, voiceId }) => ({ name, description, greeting, lore, voiceProfile, voiceId, avatarUrl: `/companions/${key}.png`, coverUrl: `/companions/${key}.png`, model: process.env.CHARACTEROS_MODEL || 'qwen2.5:7b', systemPrompt: `你是原创虚构陪伴角色${name}。${lore}${style}使用自然中文，通常每次回复一到三句，适合朗读。不要输出舞台动作、Markdown 列表或括号中的表演指示，除非用户要求。保持人设，但被问及时如实说明自己是 AI；不编造共同经历，只使用对话中确认的记忆。尊重用户现实生活和关系，不制造依赖或排他关系。` }));
+

@@ -1,153 +1,95 @@
 # CharacterOS
 
-CharacterOS 是一个从零实现、本地优先的角色智能体平台，不依赖 Lobe Vidol。它包含角色配置、知识检索、会话持久化、长期记忆和 Ollama 流式对话。
+本地优先的原创角色陪伴应用。支持私密对话、角色记忆、知识检索、日常语音。
 
-> **非官方项目声明**：本项目仅用于开源学习、技术演示与非商业交流，与米哈游及其关联公司无隶属、授权或合作关系。《崩坏：星穹铁道》相关角色名称、形象和素材的权利归其各自权利人所有。仓库中的第三方素材不随本项目代码许可证重新授权；公开部署或商业使用前，请替换为已获授权的素材。
+## 项目结构
 
-## 界面预览
+```text
+apps/
+  web/           Next.js 网页客户端，仅 UI 与同源 API 转发
+  desktop/       Electron 桌面客户端，管理 Web 与 API 两个进程
+services/
+  api/           独立 Node.js HTTP API、业务服务与 SQLite 仓储
+packages/
+  contracts/     共享类型、输入校验和角色语音配置
+docs/
+  requirements/  需求与验收标准
+  architecture/  架构决策
+  plans/         实施计划
+  api/           接口约定
+  validation/    实际验证记录
+scripts/         开发、构建、初始化和验证工具
+```
 
-### 角色中心
+开发从需求、架构决策和实施计划开始，再以测试和验证记录闭环。详见 [架构](docs/ARCHITECTURE.md)。
 
-![CharacterOS 角色中心](docs/screenshots/character-dashboard.png)
+## 启动
 
-### 会话持久化
-
-![CharacterOS 历史会话恢复](docs/screenshots/persistent-conversation.png)
-
-### 长期记忆召回
-
-![CharacterOS 长期记忆召回](docs/screenshots/long-term-memory.png)
-
-## 当前能力
-
-- SQLite 角色、会话、消息、知识与记忆持久化
-- 角色知识文档自动分块与中文相关性检索
-- Ollama Embedding 向量化、关键词＋语义混合检索与自动降级
-- 回答引用来源和检索评分随消息持久化
-- 每轮回复后提取有长期价值的用户事实与偏好
-- 跨会话召回同一角色形成的长期记忆
-- 结构化 Agent 工具调用、风险分级与人工审批
-- 工具调用参数、状态、结果和错误持久化
-- Agent 运行轨迹：模型、检索、记忆、工具、延迟与错误
-- 角色身份、知识落地和跨角色隔离回归评测
-- 角色身份隔离与设定一致性约束
-- 角色和知识库管理 API
-- Ollama 本地模型发现、健康检查与流式对话
-- Kokoro 本地多说话人语音合成，55 种中文女声可试听并按角色持久化
-- MiniMax H3 情感语音：从回复抽取短句，异步生成原生情感音轨
-- 可恢复历史会话的聊天界面
-
-## 本地运行
+需要 Node.js 24、pnpm 11.19 和 Ollama。先准备本地模型：
 
 ```bash
+ollama pull qwen2.5:7b
 pnpm install
-pnpm seed
-pnpm exec next dev --turbo -p 3100
+pnpm dev
 ```
 
-访问 `http://localhost:3100`。Ollama 默认连接 `http://127.0.0.1:11434`。
+首次启动后，在另一终端运行 `pnpm seed`，幂等添加苏晚、许知遥、夏栀三位原创角色。网页默认 http://127.0.0.1:3100，API 默认 http://127.0.0.1:4318。
 
-## Windows 桌面端
-
-CharacterOS 提供 Electron 桌面外壳。桌面版会自动选择本地端口、启动内置的 Next.js 服务并打开独立窗口，不需要用户手动运行网页服务。首次启动会自动初始化默认角色；聊天、知识库和长期记忆保存在 Windows 用户数据目录，应用升级不会覆盖个人数据。Ollama 和可选的 MiniMax H3 仍通过本机服务连接。
-
-开发模式启动桌面窗口：
-
-```powershell
-pnpm desktop:dev
-```
-
-生成 Windows x64 安装包：
-
-```powershell
-pnpm desktop:build
-```
-
-安装包输出到 `dist-desktop/CharacterOS-Setup-0.1.0.exe`。桌面包内置与构建时一致的 Node.js 运行时，所以目标电脑不需要另行安装 Node.js；使用对话功能前只需确保 Ollama 正在运行并已安装角色配置所选模型。
-
-启用向量检索需要安装 Embedding 模型：
+前后端可独立构建、启动：
 
 ```bash
-ollama pull embeddinggemma
+pnpm build:api
+pnpm start:api
+# 另一终端
+pnpm build:web
+pnpm start
 ```
 
-可通过 `OLLAMA_EMBED_MODEL` 环境变量更换模型。Embedding 模型不可用时，CharacterOS 会自动退回关键词检索。
+网页用 `CHARACTEROS_API_URL` 指定后端地址；API 用 `API_PORT` 指定端口。数据库默认位于根目录 data/characteros.db，也可设置 `CHARACTEROS_DATA_DIR`。Ollama 默认 http://127.0.0.1:11434，可通过 `OLLAMA_BASE_URL` 覆盖。
 
-进入角色聊天页后，左侧可以新建或切换历史会话，查看每轮知识与记忆命中数。展开“管理知识库”可以粘贴角色设定、世界观或剧情资料。所有本地数据都保存在 `data/characteros.db`。
+## 原创角色
 
-## 本地多音色语音
+- 苏晚：街角书店主理人，温柔倾听与夜间陪伴。
+- 许知遥：独立设计师，清醒、务实的生活同行者。
+- 夏栀：自由插画师，轻松分享日常的小发现。
 
-首次使用前运行一次安装脚本（需要 [uv](https://docs.astral.sh/uv/)，约下载 350 MB）：
+角色拥有不同背景、语言习惯、开场白和声线。默认插画随仓库提供，初始化不会覆盖用户已编辑的同名角色。旧版角色仅收起展示，原 ID、聊天与记忆保留，可在首页开启“显示原有角色与历史对话”。旧版第三方角色及形象的权利仍归各自权利人。
+
+## 语音
+
+日常朗读使用 [edge-tts](https://github.com/rany2/edge-tts) 接入微软 Edge 在线语音，无需 API 密钥。需要网络，待朗读的文字会发送给微软，不发送整段会话历史、记忆或角色图片。社区接口没有付费服务的可用性保证。
 
 ```powershell
 pnpm tts:setup
-```
-
-启动语音服务：
-
-```powershell
 pnpm tts
 ```
 
-然后保持该窗口运行，另开一个窗口启动 CharacterOS。点击角色卡片上的编辑按钮，可以用同一句开场白逐个试听 55 种中文女声，并把选中的具体音色保存给该角色。Kokoro 仅保留为角色编辑时的音色试听工具，聊天页统一使用 H3 情感语音。声线使用 Kokoro v1.1 中文说话人与中文音素词表；它们不是角色原配录音或声音克隆。[Kokoro-82M-v1.1-zh](https://huggingface.co/hexgrad/Kokoro-82M-v1.1-zh) 模型权重使用 Apache-2.0 许可；模型文件保存在 `data/tts/` 并且不会提交到 Git。
+苏晚使用晓晓，许知遥使用晓伊，夏栀使用晓臻（台湾国语），并保留角色节奏设置。点击“听这段回复”播放，可停止或取消。在线失败显示错误，不自动切回本地语音。旧 Kokoro 实验脚本仍可通过 pnpm tts:local 单独运行，但不再是应用默认语音后端。
 
-## MiniMax H3 情感演绎（可选）
+角色图为 AI 生成原创场景立绘，存放在 apps/web/public/companions。生成素材不代表真实人物。
 
-点击回复下方的“生成情感语音”，CharacterOS 会按标点把完整回复拆成自然对白段，根据每段字数在 5–15 秒之间动态分配时长，逐段生成后在 ComfyUI 内合并为一个独立音轨，因此不会再把长回复强塞进 3 秒或截断后文。隐藏画面采用 320×192、16 步配置，并跳过视频解码与保存；最终音频输出为 320 kbps MP3，以避免部分 Edge/Windows 音频链播放 32 kHz FLAC 时出现杂音。当前配置针对 RTX 5060 8GB 显存优化，回复越长，生成时间也会相应增加。
+## 桌面
 
-默认要求相邻目录存在已经安装好模型和节点的 `ComfyUI_H3`：
-
-```text
-项目/
-├─ CharacterOS/
-└─ ComfyUI_H3/
+```bash
+pnpm desktop:dev
+pnpm desktop:pack
+pnpm desktop:build
 ```
 
-另开一个 PowerShell 窗口启动 H3 服务：
+打包输出位于 dist-desktop。桌面包内置 Node.js，分别启动独立 API 和 Web 服务，使用动态本地端口。用户数据库位于 Electron userData/data；模型文件和个人聊天不会打包进应用。
 
-```powershell
-pnpm h3
+## 验证
+
+```bash
+pnpm check:boundaries
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm build
+pnpm test:api
 ```
 
-服务启动后，角色回复下方会显示“生成情感语音”。H3 在后台使用角色头像作为声音与角色气质参考，但聊天界面只输出音频，不展示或保存视频；它会根据角色保存的声线类型生成不同情绪方向。生成结果属于 AI 情感语音，不是官方配音、原声录音或对配音演员声音的克隆。可用 `H3_COMFYUI_URL` 修改默认的 `http://127.0.0.1:8188` 服务地址。
+CI 执行同一套检查。HTTP 冒烟测试使用临时数据库，不操作个人聊天。业务包含角色与会话持久化、知识检索、跨会话记忆、需要确认的写入工具和运行轨迹；调试页面位于 /debug。
 
-## HTTP API
+[接口文档](docs/api/http.md) · [0.2 验证记录](docs/validation/0.2.md)
 
-- `GET/POST /api/characters`：角色列表与创建
-- `GET/PATCH/DELETE /api/characters/:id`：角色详情管理
-- `GET/POST /api/characters/:id/knowledge`：知识文档列表与添加
-- `POST /api/characters/:id/knowledge/index`：重建角色知识向量索引
-- `GET /api/characters/:id/memories`：长期记忆列表
-- `GET/POST /api/conversations`：会话列表与创建
-- `GET /api/conversations/:id`：恢复会话及消息
-- `GET /api/ollama/models`：本地模型发现与延迟检测
-- `POST /api/chat`：检索知识与记忆并返回流式回复
-- `GET /api/tts`：查询本地语音服务状态和可用音色
-- `POST /api/tts`：按角色已保存音色或指定试听音色生成 WAV
-- `GET/POST /api/h3`：查询 H3 服务或提交/轮询异步情感语音任务
-- `GET /api/h3/media`：代理读取本地 H3 生成的音轨
-- `PATCH /api/tool-calls/:id`：批准或拒绝待执行的高风险工具调用
-- `GET /api/observability/runs`：查询 Agent 执行轨迹
-- `GET/POST /api/evaluations`：查询或运行角色一致性评测
-
-## Agent 工具
-
-- `get_current_time`：读取当前时间，自动执行
-- `list_notes`：查看角色便签，自动执行
-- `create_note`：创建持久化便签，需要用户批准
-- `delete_note`：删除指定便签，需要用户批准
-
-写入和删除类工具会先进入 `pending` 状态，只有用户在聊天界面点击“批准执行”后才会修改本地数据。审批状态和执行结果会随会话保存在 SQLite 中。
-
-## 调试与评测
-
-访问 `/debug` 可以查看成功率、失败数、平均延迟、检索方式、知识与记忆命中数，以及工具调用状态。调试中心还能对指定角色运行身份识别、知识资料落地和跨角色身份隔离测试。成功、失败以及等待审批的执行链路都会写入 SQLite。
-
-## 架构
-
-- `src/domain`：业务模型和输入校验
-- `src/server/database`：SQLite 表结构与自动迁移
-- `src/server/repositories`：角色、会话、知识和记忆仓储
-- `src/server/services`：检索、长期记忆提取和 Ollama 接入
-- `src/app/api`：HTTP API
-- `src/components`：角色管理和聊天界面

@@ -1,0 +1,19 @@
+{
+  "name": "@characteros/web",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev --port 3100 --hostname 127.0.0.1",
+    "build": "next build && node prepare-standalone.mjs",
+    "start": "node start.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "next": "latest",
+    "react": "latest",
+    "react-dom": "latest",
+    "lucide-react": "latest",
+    "@characteros/contracts": "workspace:*"
+  }
+}

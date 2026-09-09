@@ -5,5 +5,6 @@ import nextTypeScript from 'eslint-config-next/typescript';
 export default defineConfig([
   ...nextCoreWebVitals,
   ...nextTypeScript,
-  globalIgnores(['.next/**', 'desktop/runtime/**', 'dist-desktop/**', 'node_modules/**', 'next-env.d.ts']),
+  { settings: { next: { rootDir: 'apps/web/' } } },
+  globalIgnores(['**/.next/**', '**/runtime/**', '**/dist/**', 'dist-desktop/**', '**/node_modules/**', '**/next-env.d.ts']),
 ]);

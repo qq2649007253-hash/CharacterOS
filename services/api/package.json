@@ -1,0 +1,17 @@
+{
+  "name": "@characteros/api",
+  "version": "0.2.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node build.mjs",
+    "start": "node dist/server.cjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "better-sqlite3": "latest",
+    "drizzle-orm": "latest",
+    "zod": "latest",
+    "@characteros/contracts": "workspace:*"
+  }
+}

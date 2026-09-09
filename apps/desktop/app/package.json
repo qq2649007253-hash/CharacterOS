@@ -1,0 +1,8 @@
+{
+  "name": "characteros-desktop",
+  "version": "0.2.0",
+  "author": "CharacterOS Contributors",
+  "description": "CharacterOS local-first character agent desktop application",
+  "main": "main.cjs",
+  "private": true
+}

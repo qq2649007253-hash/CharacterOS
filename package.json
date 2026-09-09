@@ -1,22 +1,30 @@
 {
   "name": "characteros",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "next dev --turbo",
-    "build": "next build",
+    "dev": "node scripts/dev.mjs",
+    "build": "pnpm build:api && pnpm build:web",
     "desktop:setup": "node node_modules/electron/install.js",
-    "desktop:dev": "pnpm desktop:setup && electron desktop/app/main.cjs --dev",
-    "desktop:pack": "pnpm desktop:setup && pnpm build && node scripts/prepare-desktop.mjs && electron-builder --projectDir desktop/app --config ../electron-builder.yml --dir",
-    "desktop:build": "pnpm desktop:setup && pnpm build && node scripts/prepare-desktop.mjs && electron-builder --projectDir desktop/app --config ../electron-builder.yml --win nsis",
-    "start": "next start",
+    "desktop:dev": "pnpm desktop:setup && pnpm build:api && electron apps/desktop/app/main.cjs --dev",
+    "desktop:pack": "pnpm desktop:setup && pnpm build && node scripts/prepare-desktop.mjs && electron-builder --projectDir apps/desktop/app --config ../electron-builder.yml --dir",
+    "desktop:build": "pnpm desktop:setup && pnpm build && node scripts/prepare-desktop.mjs && electron-builder --projectDir apps/desktop/app --config ../electron-builder.yml --win nsis",
+    "start": "pnpm --filter @characteros/web start",
     "lint": "eslint .",
-    "h3": "powershell -ExecutionPolicy Bypass -File scripts\\start-h3.ps1",
     "seed": "node scripts/seed-characters.mjs",
     "test": "vitest run",
-    "tts": ".venv-tts-native\\Scripts\\python.exe scripts\\kokoro-tts-server.py",
-    "tts:setup": "powershell -ExecutionPolicy Bypass -File scripts\\setup-tts.ps1"
+    "tts": ".venv-tts-native\\Scripts\\python.exe scripts\\edge-tts-server.py",
+    "tts:setup": "powershell -ExecutionPolicy Bypass -File scripts/setup-edge-tts.ps1",
+    "build:api": "pnpm --filter @characteros/api build",
+    "build:web": "pnpm --filter @characteros/web build",
+    "dev:web": "pnpm --filter @characteros/web dev",
+    "start:api": "pnpm --filter @characteros/api start",
+    "typecheck": "tsc --noEmit",
+    "check:boundaries": "node scripts/check-boundaries.mjs",
+    "test:api": "node scripts/test-api.mjs",
+    "tts:local": ".venv-tts-native\\Scripts\\python.exe scripts\\kokoro-tts-server.py",
+    "tts:setup:local": "powershell -ExecutionPolicy Bypass -File scripts\\setup-tts.ps1"
   },
   "dependencies": {
     "better-sqlite3": "latest",
@@ -34,12 +42,13 @@
     "@types/react-dom": "latest",
     "electron": "^44.0.0",
     "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
     "eslint": "^9.0.0",
     "eslint-config-next": "latest",
     "typescript": "^6.0.0",
     "vitest": "latest"
   },
-  "packageManager": "pnpm@11.20.0",
+  "packageManager": "pnpm@11.19.0",
   "engines": {
     "node": ">=20"
   }
