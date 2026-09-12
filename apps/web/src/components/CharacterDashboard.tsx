@@ -318,16 +318,16 @@ export function CharacterDashboard() {
       {characters.some((character) => LEGACY_CHARACTER_NAMES.includes(character.name)) ? <label className="legacy-toggle"><input type="checkbox" checked={showLegacy} onChange={(event) => setShowLegacy(event.target.checked)} /> 显示原有角色与历史对话</label> : null}
       {loadError ? <div className="card empty" role="alert"><p>{loadError}</p><button className="button" onClick={() => void loadCharacters()} type="button">重新连接</button></div> : charactersLoading ? <div className="card empty" role="status">正在整理你的角色…</div> : visibleCharacters.length ? (
         <div className="grid">
-          {visibleCharacters.map((character) => (
+          {visibleCharacters.map((character, index) => (
             <article className="card character-card" key={character.id}>
               {character.coverUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img alt={character.name} src={character.coverUrl} />
+                <img alt={character.name} loading="lazy" src={character.coverUrl} />
               ) : (
                 <div style={{ height: 330, background: 'linear-gradient(145deg,#34265f,#101a36)' }} />
               )}
               <div className="character-overlay">
-                <h2>{character.name}</h2>
+                <div className="character-heading"><h2>{character.name}</h2><span className="character-number">{String(index + 1).padStart(2, '0')}</span></div>
                 <p>{character.description || character.model}</p>
                 <span className="card-voice-label">
                   {VOICE_PROFILES[character.voiceProfile].label} · 私密陪伴
@@ -353,4 +353,6 @@ export function CharacterDashboard() {
     </>
   );
 }
+
+
 

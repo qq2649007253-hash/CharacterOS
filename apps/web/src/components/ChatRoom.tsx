@@ -269,7 +269,7 @@ export function ChatRoom({ character }: { character: Character }) {
       <header className="topbar">
         <Link className="button" href="/"><ArrowLeft size={16} /> 角色列表</Link>
         <div className="topbar-actions">
-          <div className="brand">{character.name} <span className="muted">· {character.model}</span></div>
+          <div className="chat-title">{character.name} <span className="muted">· 陪你慢慢聊</span></div>
         </div>
       </header>
       <main className="chat-layout">
@@ -401,3 +401,4 @@ export function ChatRoom({ character }: { character: Character }) {
     </div>
   );
 }
+

@@ -1,16 +1,17 @@
-import { Activity, BrainCircuit } from 'lucide-react';
+import { Activity, Sparkle } from 'lucide-react';
 import Link from 'next/link';
 
 export function TopBar() {
   return (
     <header className="topbar">
       <Link className="brand" href="/">
-        <span className="brand-mark"><BrainCircuit size={20} /></span>
+        <span className="brand-mark"><Sparkle size={20} strokeWidth={1.2} /></span>
         <span>CharacterOS</span>
       </Link>
       <div className="topbar-actions">
-        <Link className="button" href="/debug"><Activity size={15} /> 调试中心</Link>
-        <span className="muted">陪伴与回忆，留在身边</span>
+        <Link className="nav-home" href="/">陪伴空间</Link>
+        <span className="muted topbar-motto">让每一次相遇，都有回响</span>
+        <Link className="button debug-link" href="/debug"><Activity size={15} /> 调试中心</Link>
       </div>
     </header>
   );
