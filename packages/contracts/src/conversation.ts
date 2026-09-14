@@ -26,3 +26,5 @@ export interface MessageCitation {
   score: number;
   title: string;
 }
+
+export interface ConversationPage { conversations: Conversation[]; nextCursor: string | null; }

@@ -5,8 +5,9 @@ import Link from 'next/link';
 import { FormEvent, useEffect, useRef, useState } from 'react';
 
 import type { Character } from '@characteros/contracts/character';
+import { AccountMenu } from './AuthGate';
 import { VoicePlayer } from './VoicePlayer';
-import type { Conversation, MessageCitation, PersistedMessage } from '@characteros/contracts/conversation';
+import type { ConversationPage, Conversation, MessageCitation, PersistedMessage } from '@characteros/contracts/conversation';
 import type { KnowledgeDocument } from '@characteros/contracts/knowledge';
 import type { ToolCallRecord } from '@characteros/contracts/tool';
 
@@ -27,6 +28,26 @@ const decodeCitationsHeader = (value: string | null) => {
 
 export function ChatRoom({ character }: { character: Character }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [pageError, setPageError] = useState('');
+  const pageRef = useRef<AbortController | null>(null);
+  useEffect(() => () => pageRef.current?.abort(), []);
+  const loadMore = async () => {
+    if (!nextCursor || pageRef.current) return;
+    const controller = new AbortController(); pageRef.current = controller;
+    setLoadingMore(true); setPageError('');
+    try {
+      const params = new URLSearchParams({ characterId: character.id, limit: '20', cursor: nextCursor });
+      const response = await fetch('/api/conversations?' + params, { cache: 'no-store', signal: controller.signal });
+      if (!response.ok) throw new Error('加载失败，请重试');
+      const data: ConversationPage = await response.json();
+      if (controller.signal.aborted) return;
+      setConversations(items => { const ids = new Set(items.map(item => item.id)); return [...items, ...data.conversations.filter(item => !ids.has(item.id))]; });
+      setNextCursor(data.nextCursor);
+    } catch { if (!controller.signal.aborted) setPageError('历史对话加载失败，请重试。'); }
+    finally { if (!controller.signal.aborted) setLoadingMore(false); if (pageRef.current === controller) pageRef.current = null; }
+  };
   const [conversationId, setConversationId] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -146,8 +167,9 @@ export function ChatRoom({ character }: { character: Character }) {
       try {
         const response = await fetch(`/api/conversations?characterId=${encodeURIComponent(character.id)}`, { cache: 'no-store' });
         if (!response.ok) throw new Error('读取会话失败');
-        const data = (await response.json()) as { conversations: Conversation[] };
+        const data = (await response.json()) as ConversationPage;
         setConversations(data.conversations);
+        setNextCursor(data.nextCursor);
         await refreshContextData();
         if (data.conversations[0]) await loadConversation(data.conversations[0].id);
         else await createConversation();
@@ -269,7 +291,7 @@ export function ChatRoom({ character }: { character: Character }) {
       <header className="topbar">
         <Link className="button" href="/"><ArrowLeft size={16} /> 角色列表</Link>
         <div className="topbar-actions">
-          <div className="chat-title">{character.name} <span className="muted">· 陪你慢慢聊</span></div>
+          <AccountMenu /><div className="chat-title">{character.name} <span className="muted">· 陪你慢慢聊</span></div>
         </div>
       </header>
       <main className="chat-layout">
@@ -296,6 +318,9 @@ export function ChatRoom({ character }: { character: Character }) {
               </button>
             ))}
           </div>
+          {nextCursor && <button className="button full-button" disabled={loadingMore || loading || restoring} onClick={() => void loadMore()} type="button">{loadingMore ? '正在加载…' : '加载更多对话'}</button>}
+          {pageError && <p className="error" role="alert">{pageError}</p>}
+          {!nextCursor && conversations.length > 0 && <p className="index-status">已显示全部对话</p>}
           <div className="context-status">
             <span><BookOpen size={14} /> 本轮知识 {contextStats.knowledge} 条 · 共 {documents.length} 份</span>
             <span><Brain size={14} /> 本轮记忆 {contextStats.memories} 条 · 共 {memories.length} 条</span>

@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm';
+import { desc, eq, inArray } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 import { database } from '@/server/database/client';
@@ -37,6 +37,12 @@ export const memoryRepository = {
   touch(ids: string[]) {
     if (!ids.length) return;
     const now = new Date().toISOString();
-    for (const id of ids) database.update(memories).set({ lastAccessedAt: now }).where(eq(memories.id, id)).run();
+    const uniqueIds = [...new Set(ids)];
+    database.transaction((transaction) => {
+      for (let offset = 0; offset < uniqueIds.length; offset += 500) {
+        transaction.update(memories).set({ lastAccessedAt: now })
+          .where(inArray(memories.id, uniqueIds.slice(offset, offset + 500))).run();
+      }
+    });
   },
 };

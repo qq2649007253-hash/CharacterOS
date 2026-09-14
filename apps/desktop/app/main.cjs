@@ -54,7 +54,7 @@ const waitForServer = async (baseUrl, timeout = 120_000) => {
   while (Date.now() - startedAt < timeout) {
     if ((serverProcess && serverProcess.exitCode !== null) || (apiProcess && apiProcess.exitCode !== null)) throw new Error('本地服务提前退出');
     try {
-      await requestJson(`${baseUrl}/api/characters`);
+      await requestJson(`${baseUrl}/api/auth/me`);
       return;
     } catch {
       await delay(500);

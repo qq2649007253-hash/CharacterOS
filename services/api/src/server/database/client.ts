@@ -10,7 +10,7 @@ const dataDirectory = process.env.CHARACTEROS_DATA_DIR
   : path.resolve(process.cwd(), 'data');
 mkdirSync(dataDirectory, { recursive: true });
 
-const sqlite = new Database(path.join(dataDirectory, 'characteros.db'));
+export const sqlite = new Database(path.join(dataDirectory, 'characteros.db'));
 sqlite.pragma('journal_mode = WAL');
 sqlite.pragma('foreign_keys = ON');
 sqlite.exec(`
@@ -133,8 +133,11 @@ sqlite.exec(`
     created_at TEXT NOT NULL,
     FOREIGN KEY(character_id) REFERENCES characters(id) ON DELETE CASCADE
   );
+  CREATE INDEX IF NOT EXISTS conversations_page_idx ON conversations(character_id, updated_at DESC, id DESC);
   CREATE INDEX IF NOT EXISTS conversations_character_idx ON conversations(character_id, updated_at DESC);
   CREATE INDEX IF NOT EXISTS messages_conversation_idx ON messages(conversation_id, created_at);
+  CREATE INDEX IF NOT EXISTS knowledge_documents_character_created_idx ON knowledge_documents(character_id, created_at);
+  CREATE INDEX IF NOT EXISTS knowledge_chunks_document_idx ON knowledge_chunks(document_id);
   CREATE INDEX IF NOT EXISTS knowledge_chunks_character_idx ON knowledge_chunks(character_id);
   CREATE INDEX IF NOT EXISTS memories_character_idx ON memories(character_id, updated_at DESC);
   CREATE INDEX IF NOT EXISTS notes_character_idx ON notes(character_id, updated_at DESC);
@@ -165,3 +168,11 @@ if (!knowledgeChunkColumns.some((column) => column.name === 'embedding_json')) {
 }
 
 export const database = drizzle(sqlite, { schema });
+
+if (!characterColumns.some(column => column.name === 'owner_id')) sqlite.exec("ALTER TABLE characters ADD COLUMN owner_id TEXT");
+sqlite.exec(`
+ CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, username TEXT NOT NULL UNIQUE COLLATE NOCASE, password_hash TEXT NOT NULL, role TEXT NOT NULL CHECK(role IN ('admin','user')), disabled INTEGER NOT NULL DEFAULT 0);
+ CREATE TABLE IF NOT EXISTS sessions (token_hash TEXT PRIMARY KEY, user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, expires_at INTEGER NOT NULL);
+ CREATE INDEX IF NOT EXISTS sessions_user_idx ON sessions(user_id);
+ CREATE INDEX IF NOT EXISTS characters_owner_idx ON characters(owner_id, updated_at DESC);
+`);

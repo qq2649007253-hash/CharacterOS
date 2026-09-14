@@ -1,11 +1,12 @@
 
 
+import { ensureCompanions } from '@/server/services/companionService';
 import { characterInputSchema } from '@characteros/contracts/character';
 import { characterRepository } from '@/server/repositories/characterRepository';
 
 export const runtime = 'nodejs';
 
-export const GET = async () => Response.json({ items: characterRepository.findAll() });
+export const GET = async () => { ensureCompanions(); return Response.json({ items: characterRepository.findAll() }); };
 
 export const POST = async (request: Request) => {
   const parsed = characterInputSchema.safeParse(await request.json());

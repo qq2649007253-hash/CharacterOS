@@ -1,4 +1,4 @@
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, lt, or } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 
 import type { Conversation, PersistedMessage } from '@characteros/contracts/conversation';
@@ -40,13 +40,18 @@ export const conversationRepository = {
       .get();
   },
 
-  list(characterId: string) {
-    return database
-      .select()
-      .from(conversations)
-      .where(eq(conversations.characterId, characterId))
-      .orderBy(desc(conversations.updatedAt))
-      .all();
+  list(characterId: string, limit = 20, cursor?: { updatedAt: string; id: string }) {
+    const rows = database.select().from(conversations)
+      .where(and(eq(conversations.characterId, characterId), cursor ? or(
+        lt(conversations.updatedAt, cursor.updatedAt),
+        and(eq(conversations.updatedAt, cursor.updatedAt), lt(conversations.id, cursor.id)),
+      ) : undefined))
+      .orderBy(desc(conversations.updatedAt), desc(conversations.id))
+      .limit(limit + 1).all();
+    const page = rows.slice(0, limit);
+    const last = page.at(-1);
+    return { conversations: page, nextCursor: rows.length > limit && last
+      ? Buffer.from(JSON.stringify({ updatedAt: last.updatedAt, id: last.id })).toString('base64url') : null };
   },
 
   listMessages(conversationId: string, limit = 40) {

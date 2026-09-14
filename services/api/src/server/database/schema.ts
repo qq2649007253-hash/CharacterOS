@@ -1,6 +1,7 @@
 import { integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
 export const characters = sqliteTable('characters', {
+  ownerId: text('owner_id'),
   avatarUrl: text('avatar_url').notNull().default(''),
   coverUrl: text('cover_url').notNull().default(''),
   createdAt: text('created_at').notNull(),

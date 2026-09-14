@@ -60,7 +60,7 @@ const keywordResults = (characterId: string, query: string, limit: number): Retr
 const hybridResults = async (characterId: string, query: string, limit: number, signal?: AbortSignal) => {
   if (Date.now() < embeddingUnavailableUntil) return undefined;
   const titles = new Map(knowledgeRepository.list(characterId).map((document) => [document.id, document.title]));
-  const chunks = knowledgeRepository.listChunks(characterId).slice(0, 64);
+  const chunks = knowledgeRepository.listChunks(characterId, 64);
   if (!chunks.length) return [];
   try {
     const missing = chunks.filter((chunk) => !chunk.embeddingJson);

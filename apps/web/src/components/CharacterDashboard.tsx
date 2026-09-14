@@ -1,6 +1,7 @@
 'use client';
 
 import { ArrowRight, Bot, Pencil, Play, Plus, RefreshCw, Square, Trash2, X } from 'lucide-react';
+import { ImportCharacter, ShareCharacter } from './CharacterSharing';
 import Link from 'next/link';
 import { FormEvent, useCallback, useEffect, useRef, useState } from 'react';
 
@@ -237,6 +238,7 @@ export function CharacterDashboard() {
         </button>
       </div>
 
+      <ImportCharacter onImported={loadCharacters} />
       {showForm && (
         <form className="card form-card" onSubmit={submit} style={{ marginBottom: 22 }}>
           <div className="form-grid">
@@ -343,6 +345,7 @@ export function CharacterDashboard() {
                     <Trash2 size={16} />
                   </button>
                 </div>
+                <ShareCharacter character={character} />
               </div>
             </article>
           ))}

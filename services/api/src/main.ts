@@ -7,6 +7,7 @@ type Handler = (request: Request, context: { params: Promise<Record<string, stri
 
 async function start() {
   const { routes } = await import('./routes.generated');
+  const { authorize } = await import('./server/services/authService');
   const server = createServer(async (incoming, outgoing) => {
     const controller = new AbortController();
     incoming.on('aborted', () => controller.abort());
@@ -14,7 +15,7 @@ async function start() {
     try {
       const url = new URL(incoming.url || '/', 'http://127.0.0.1');
       const origin = incoming.headers.origin;
-      if (origin && !['127.0.0.1', 'localhost', '[::1]'].includes(new URL(origin).hostname)) {
+      if (origin && (new URL(origin).host !== incoming.headers.host || !['http:', 'https:'].includes(new URL(origin).protocol))) {
         outgoing.writeHead(403).end(); return;
       }
       if (url.pathname === '/health') { outgoing.writeHead(200, { 'content-type': 'application/json' }).end('{"status":"ok"}'); return; }
@@ -40,7 +41,8 @@ async function start() {
         const headers = new Headers();
         for (const [key, value] of Object.entries(incoming.headers)) if (value) headers.set(key, Array.isArray(value) ? value.join(', ') : value);
         const request = new Request(url, { method, headers, signal: controller.signal, ...(method !== 'GET' && method !== 'HEAD' ? { body: Buffer.concat(chunks) } : {}) });
-        response = await handler(request, { params: Promise.resolve(params) });
+        response = await authorize(request, () => handler(request, { params: Promise.resolve(params) }));
+        response.headers.set('Cache-Control', 'no-store');
       }
       outgoing.writeHead(response.status, Object.fromEntries(response.headers));
       if (response.body) {

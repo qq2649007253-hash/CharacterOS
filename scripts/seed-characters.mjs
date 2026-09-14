@@ -1,6 +1,7 @@
 import { companions as seeds } from './seed-companions.mjs';
 const appUrl = (process.env.CHARACTEROS_URL || 'http://127.0.0.1:4318').replace(/\/$/, '');
 const response = await fetch(`${appUrl}/api/characters`);
+if (response.status === 401) { console.log('请先登录，在界面创建角色。'); process.exit(0); }
 if (!response.ok) throw new Error(`无法连接 CharacterOS：HTTP ${response.status}`);
 const { items } = await response.json();
 

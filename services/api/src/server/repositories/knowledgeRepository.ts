@@ -97,12 +97,10 @@ export const knowledgeRepository = {
       .all();
   },
 
-  listChunks(characterId: string) {
-    return database
-      .select()
-      .from(knowledgeChunks)
-      .where(eq(knowledgeChunks.characterId, characterId))
-      .all();
+  listChunks(characterId: string, limit?: number) {
+    const query = database.select().from(knowledgeChunks)
+      .where(eq(knowledgeChunks.characterId, characterId));
+    return limit === undefined ? query.all() : query.limit(limit).all();
   },
 
   updateEmbedding(id: string, embedding: number[]) {

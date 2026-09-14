@@ -26,3 +26,7 @@
 语音提交 `{ characterId, text }` 或试听 `{ voiceId, text }`，文字 1–3000 字。成功返回 audio/mpeg，失败返回 JSON。客户端校验状态和音频类型，不将错误内容当音频播放。
 
 数据库路径和模型连接配置只在后端使用，不进入浏览器产物。
+
+会话列表分页：GET /api/conversations?characterId=...&limit=20&cursor=...。limit 为 1–50，默认 20。返回 `{ conversations, nextCursor }`；nextCursor 为 null 时已到末页。游标按 updatedAt 与 id 倒序翻页，客户端应追加并按 id 去重。其他窗口更新可能改变实时排序，重新加载第一页可获取最新列表。非法参数返回 400。
+
+账号接口：GET /api/auth/me 返回 user 与 needsSetup；POST /api/auth/setup、register、login 提交 username/password；POST /api/auth/logout 撤销当前会话。register 只能创建普通用户。GET/POST/PATCH /api/admin/users 仅管理员可用，POST 创建普通账号，PATCH 提交 id、role、disabled，不能修改自己。其他业务接口未登录返回 401，跨账号资源返回 404，管理员权限不足返回 403。所有写请求采用 application/json。

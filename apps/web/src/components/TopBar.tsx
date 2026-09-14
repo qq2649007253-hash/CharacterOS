@@ -1,4 +1,5 @@
-import { Activity, Sparkle } from 'lucide-react';
+import { Sparkle } from 'lucide-react';
+import { AccountMenu } from './AuthGate';
 import Link from 'next/link';
 
 export function TopBar() {
@@ -11,7 +12,7 @@ export function TopBar() {
       <div className="topbar-actions">
         <Link className="nav-home" href="/">陪伴空间</Link>
         <span className="muted topbar-motto">让每一次相遇，都有回响</span>
-        <Link className="button debug-link" href="/debug"><Activity size={15} /> 调试中心</Link>
+        <AccountMenu />
       </div>
     </header>
   );
