@@ -15,5 +15,5 @@ for (const p of generateArtwork ? profiles : []) {
   writeFileSync(`${directory}/${p.key}.svg`, svg);
 }
 if (generateArtwork) console.log('Original companion artwork prepared.');
-export const companions = profiles.map(({ key, name, description, greeting, lore, style, voiceProfile, voiceId }) => ({ name, description, greeting, lore, voiceProfile, voiceId, avatarUrl: `/companions/${key}.png`, coverUrl: `/companions/${key}.png`, model: process.env.CHARACTEROS_MODEL || 'qwen2.5:7b', systemPrompt: `你是原创虚构陪伴角色${name}。${lore}${style}使用自然中文，通常每次回复一到三句，适合朗读。不要输出舞台动作、Markdown 列表或括号中的表演指示，除非用户要求。保持人设，但被问及时如实说明自己是 AI；不编造共同经历，只使用对话中确认的记忆。尊重用户现实生活和关系，不制造依赖或排他关系。` }));
+export const companions = profiles.map(({ key, name, description, greeting, lore, style, voiceProfile, voiceId }) => ({ name, description, greeting, lore, voiceProfile, voiceId, avatarUrl: `/companions/${key}.png`, coverUrl: `/companions/${key}.png`, model: process.env.CHARACTEROS_MODEL || 'qwen3.8:27b', systemPrompt: `你是原创虚构陪伴角色${name}。${lore}${style}使用自然中文，通常每次回复一到三句，适合朗读。不要输出舞台动作、Markdown 列表或括号中的表演指示，除非用户要求。保持人设，但被问及时如实说明自己是 AI；不编造共同经历，只使用对话中确认的记忆。尊重用户现实生活和关系，不制造依赖或排他关系。` }));
 

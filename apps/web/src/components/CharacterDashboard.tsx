@@ -23,7 +23,7 @@ const initialForm: CharacterInput = {
   description: '',
   greeting: '你好，很高兴认识你。',
   lore: '',
-  model: 'qwen2.5:7b',
+  model: 'qwen3.8:27b',
   name: '',
   systemPrompt: '你是一个真诚、可靠的角色助手。请保持人设一致，不确定的事实要坦诚说明。',
   voiceId: 'zh-CN-XiaoxiaoNeural',
@@ -249,7 +249,7 @@ export function CharacterDashboard() {
             <div className="field">
               <label htmlFor="model">Ollama 模型</label>
               <select id="model" className="input" onChange={(e) => update('model', e.target.value)} value={form.model}>
-                {(status?.models.length ? status.models : [{ name: 'qwen2.5:7b' }]).map((model) => (
+                {(status?.models.length ? status.models : [{ name: 'qwen3.8:27b' }]).map((model) => (
                   <option key={model.name} value={model.name}>{model.name}</option>
                 ))}
               </select>

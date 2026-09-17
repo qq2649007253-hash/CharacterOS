@@ -39,6 +39,11 @@ export const buildOllamaMessages = (character: Character, context: PromptContext
   ...context.history.map(({ content, role }) => ({ content, role })),
 ];
 
+// Bound local Qwen3.8 memory usage and avoid thinking delays in companion chat.
+export const localModelOptions = (model: string) => /^qwen3\.8(?::|$)/i.test(model)
+  ? { think: false, options: { num_ctx: 4096, num_predict: 512 } }
+  : {};
+
 export const ollamaService = {
   async embed(inputs: string[], model = process.env.OLLAMA_EMBED_MODEL || 'embeddinggemma', signal?: AbortSignal) {
     const response = await fetch(`${baseUrl}/api/embed`, {
@@ -55,7 +60,7 @@ export const ollamaService = {
 
   async complete(model: string, messages: Array<{ content: string; role: string }>, signal?: AbortSignal) {
     const response = await fetch(`${baseUrl}/api/chat`, {
-      body: JSON.stringify({ format: 'json', messages, model, stream: false }),
+      body: JSON.stringify({ format: 'json', messages, model, ...localModelOptions(model), stream: false }),
       headers: { 'Content-Type': 'application/json' },
       method: 'POST',
       signal,
@@ -67,7 +72,7 @@ export const ollamaService = {
 
   async completeText(model: string, messages: Array<{ content: string; role: string }>, signal?: AbortSignal) {
     const response = await fetch(`${baseUrl}/api/chat`, {
-      body: JSON.stringify({ messages, model, stream: false }),
+      body: JSON.stringify({ messages, model, ...localModelOptions(model), stream: false }),
       headers: { 'Content-Type': 'application/json' },
       method: 'POST',
       signal,
@@ -89,6 +94,7 @@ export const ollamaService = {
       body: JSON.stringify({
         messages: buildOllamaMessages(character, context),
         model: character.model,
+        ...localModelOptions(character.model),
         stream: true,
       }),
       headers: { 'Content-Type': 'application/json' },

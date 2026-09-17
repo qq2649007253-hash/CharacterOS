@@ -41,7 +41,7 @@ scripts/         开发、构建、初始化和验证工具
 需要 Node.js 24、pnpm 11.19 和 Ollama。先准备本地模型：
 
 ```bash
-ollama pull qwen2.5:7b
+ollama pull qwen3.8:27b
 pnpm install
 pnpm dev
 ```
@@ -120,3 +120,7 @@ API 只监听本机。Cookie 使用 HttpOnly、SameSite=Strict，生命周期 7 
 ## 分享角色
 角色卡中的分享入口可生成、撤销分享链接或导出角色 JSON。接收者从首页的添加朋友分享的角色入口预览并导入。仅分享角色配置，不包含聊天、记忆与知识库。链接限同一服务使用，跨电脑请发送角色文件。已导出文件及对方已有副本无法撤回。
 
+
+## Qwen3.8 本地对话
+
+默认模型为 `qwen3.8:27b`，请先升级 Ollama，再执行 `ollama pull qwen3.8:27b`。模型下载约 18GB；8GB 显存设备会使用部分系统内存，回复速度受硬件影响。Qwen3.8 请求关闭思考，使用 4096 token 上下文和最多 512 token 输出以控制本地开销；其他模型不受此配置影响。已有角色可在编辑页面更换模型，聊天和记忆不会被删除。
